@@ -1,0 +1,41 @@
+---
+project: 'sdc-zusammen'
+project_creation_date: '2026-07-07'
+lifecycle_state: 'Incubation'
+project_lead: &onap_sdc_ptl
+  name: 'Michael Morris'
+  email: 'michael.morris@est.tech'
+  company: 'Ericsson Software Technology (EST)'
+  id: 'MichaelMorris'
+  timezone: 'Europe/Dublin'
+primary_contact: *onap_sdc_ptl
+project_category: ''
+issue_tracking:
+  type: 'jira'
+  url: 'https://jira.onap.org/projects/SDC'
+  key: 'SDC'
+mailing_list:
+  type: 'groups.io'
+  url: 'lists.onap.org'
+  tag: 'sdc'
+realtime_discussion: ''
+meetings:
+  - type: 'zoom'
+    agenda: ''
+    url: 'https://wiki.onap.org/pages/viewpage.action?pageId=6592847'
+    server: 'n/a'
+    channel: 'n/a'
+    repeats: 'weekly'
+    time: '11:00 UTC'
+repositories:
+  - 'sdc/zusammen'
+committers:
+  - <<: *onap_sdc_ptl
+  - name: 'Fiete Ostkamp'
+    email: 'fiete.ostkamp@telekom.de'
+    company: 'Deutsche Telekom'
+    id: 'fostkamp'
+    timezone: 'Europe/Berlin'
+tsc:
+  approval: 'https://lists.onap.org/pipermail/onap-tsc'
+  changes: ''
