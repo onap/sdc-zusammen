@@ -1,0 +1,14 @@
+{
+  "configuration": {
+    "level": 1,
+    "properties": {
+      "cassandra.nodes": [
+        "localhost"
+      ],
+      "cassandra.port": "9042",
+      "cassandra.keyspace": "zusammen",
+      "cassandra.authenticate": false,
+      "cassandra.ssl": false
+    }
+  }
+}

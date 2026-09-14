@@ -1,0 +1,10 @@
+{
+  "configuration": {
+    "level": 1,
+    "plugins": {
+      "zusammen_state_store": {
+        "implementationClass": "com.amdocs.zusammen.plugin.statestore.cassandra.StateStoreImpl"
+      }
+    }
+  }
+}
