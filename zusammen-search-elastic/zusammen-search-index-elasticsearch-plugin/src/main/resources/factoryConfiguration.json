@@ -1,0 +1,3 @@
+{
+  "com.amdocs.zusammen.plugin.searchindex.elasticsearch.dao.ElasticSearchDaoFactory": "com.amdocs.zusammen.plugin.searchindex.elasticsearch.dao.impl.ElasticSearchDaoFactoryImpl"
+}
