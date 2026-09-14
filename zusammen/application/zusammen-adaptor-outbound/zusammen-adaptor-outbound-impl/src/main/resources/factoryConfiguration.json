@@ -1,0 +1,8 @@
+{
+  "com.amdocs.zusammen.adaptor.outbound.api.CollaborationAdaptorFactory": "com.amdocs.zusammen.adaptor.outbound.impl.CollaborationAdaptorFactoryImpl",
+  "com.amdocs.zusammen.adaptor.outbound.api.item.ItemStateAdaptorFactory": "com.amdocs.zusammen.adaptor.outbound.impl.item.ItemStateAdaptorFactoryImpl",
+  "com.amdocs.zusammen.adaptor.outbound.api.item.ItemVersionStateAdaptorFactory": "com.amdocs.zusammen.adaptor.outbound.impl.item.ItemVersionStateAdaptorFactoryImpl",
+  "com.amdocs.zusammen.adaptor.outbound.api.item.ElementStateAdaptorFactory": "com.amdocs.zusammen.adaptor.outbound.impl.item.ElementStateAdaptorFactoryImpl",
+  "com.amdocs.zusammen.adaptor.outbound.api.SearchIndexAdaptorFactory": "com.amdocs.zusammen.adaptor.outbound.impl.SearchIndexAdaptorFactoryImpl",
+  "com.amdocs.zusammen.adaptor.outbound.api.health.HealthAdaptorFactory": "com.amdocs.zusammen.adaptor.outbound.impl.health.HealthAdaptorFactoryImpl"
+}

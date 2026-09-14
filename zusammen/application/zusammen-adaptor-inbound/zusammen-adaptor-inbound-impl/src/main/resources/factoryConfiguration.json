@@ -1,0 +1,6 @@
+{
+  "com.amdocs.zusammen.adaptor.inbound.api.item.ItemAdaptorFactory": "com.amdocs.zusammen.adaptor.inbound.impl.item.ItemAdaptorFactoryImpl",
+  "com.amdocs.zusammen.adaptor.inbound.api.item.ItemVersionAdaptorFactory": "com.amdocs.zusammen.adaptor.inbound.impl.item.ItemVersionAdaptorFactoryImpl",
+  "com.amdocs.zusammen.adaptor.inbound.api.item.ElementAdaptorFactory": "com.amdocs.zusammen.adaptor.inbound.impl.item.ElementAdaptorFactoryImpl",
+  "com.amdocs.zusammen.adaptor.inbound.api.health.HealthAdaptorFactory": "com.amdocs.zusammen.adaptor.inbound.impl.health.HealthAdaptorFactoryImpl"
+}
