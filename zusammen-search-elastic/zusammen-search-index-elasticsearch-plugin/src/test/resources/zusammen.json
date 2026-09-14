@@ -1,0 +1,14 @@
+{
+  "configuration": {
+    "level": 1,
+    "plugins": {
+      "zusammen_search_index": {
+        "properties": {
+          "es.host": "localhost",
+          "es.transport.tcp.port": "9300",
+          "es.clusterName": "zusammenCluster"
+        }
+      }
+    }
+  }
+}
