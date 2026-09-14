@@ -47,6 +47,7 @@
         <module>zusammen-commons</module>
         <module>zusammen</module>
         <module>zusammen-metadata-cassandra</module>
+        <module>zusammen-collaborative-cassandra</module>
     </modules>
 
     <distributionManagement>
