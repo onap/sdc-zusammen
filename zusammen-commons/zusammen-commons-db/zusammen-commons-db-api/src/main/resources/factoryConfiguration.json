@@ -1,0 +1,3 @@
+{
+  "com.amdocs.zusammen.commons.db.api.cassandra.CassandraConnectorFactory": "com.amdocs.zusammen.commons.db.impl.cassandra.CassandraConnectorFactoryImpl"
+}

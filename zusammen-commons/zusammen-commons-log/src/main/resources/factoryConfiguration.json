@@ -1,0 +1,3 @@
+{
+  "com.amdocs.zusammen.commons.log.ZusammenLoggerFactory": "com.amdocs.zusammen.commons.log.impl.ZusammenSLF4JLoggerFactoryImpl"
+}
