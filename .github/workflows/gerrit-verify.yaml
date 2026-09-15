@@ -1,0 +1,226 @@
+---
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 The Linux Foundation
+
+# =============================================================================
+# Gerrit patchset verify for sdc/zusammen (Maven).
+#
+# Replaces the JJB '{project-name}-{stream}-verify-java' job. Gerrit is the
+# source of truth; gerrit_to_platform dispatches this workflow when a
+# patchset is created and it votes Verified +/-1 on the change.
+#
+# DEPLOYMENT NOTES:
+#   * Discovered by filename: it contains both 'gerrit' and 'verify'.
+#   * Must exist on EVERY active branch; dispatches target
+#     refs/heads/{GERRIT_BRANCH}.
+#   * Requires repository variables GERRIT_SERVER, GERRIT_SSH_USER,
+#     GERRIT_KNOWN_HOSTS, GERRIT_URL and the secret GERRIT_SSH_PRIVKEY.
+#   * GERRIT_DISABLED runs it manually from the GitHub UI without Gerrit.
+#
+# TOOLCHAIN NOTES -- every override below was established empirically by
+# building the imported tree; none is cargo-culted from the JJB job:
+#
+#   java_version: '11'
+#     Mandatory, and must be explicit. The reusable workflow otherwise
+#     auto-detects and falls back to 21. The vendored mockito-all 1.10.19
+#     bundles cglib, which calls setAccessible on ClassLoader.defineClass;
+#     JDK 16 made strong encapsulation deny-by-default, so that throws
+#     InaccessibleObjectException in a static initialiser. Every Mockito
+#     test class then fails its @BeforeMethod and TestNG SKIPS the rest:
+#     8 of 79 tests execute on JDK 17/21 versus 79 of 79 on JDK 11.
+#     The boundary is JDK 16, not 21.
+#
+#   run_jacoco: false AND -Djacoco.skip=true
+#     Both are needed and they do different things. run_jacoco stops the
+#     build action injecting its own JaCoCo arguments; -Djacoco.skip
+#     disables the jacoco-maven-plugin 0.7.7.201606060606 that eight of
+#     the project's own POMs configure. That 2016 release predates Java 9
+#     and kills the forked JVM at premain on every JDK >= 9:
+#       java.lang.RuntimeException: Class java/util/UUID could not be
+#       instrumented ... processing of -javaagent failed
+#     which surfaces as 'Tests run: 0' and 'The forked VM terminated
+#     without properly saying goodbye'. The plugin version is hardcoded
+#     rather than held in a property, so it cannot be overridden from the
+#     command line. Restoring real coverage means bumping JaCoCo to
+#     >= 0.8.7 in those eight POMs; until then coverage is off, not
+#     silently broken.
+#
+#   -Dgpg.skip
+#     The root POM binds maven-gpg-plugin 1.6 to the verify phase. Without
+#     this the build fails with 'Exit code: 2' for want of a signing key.
+#     Upstream's own Travis configuration passed the same flag.
+#
+#   -Dmaven.javadoc.skip=true
+#     maven-javadoc-plugin 2.10.4 resolves detectJavaApiLink over plain
+#     HTTP to docs.oracle.com. Javadoc itself succeeds on every JDK
+#     tested, so this is not a correctness fix: it removes an egress
+#     dependency the verify lane has no need of, and with it the risk of
+#     a stall behind harden-runner's block policy.
+#
+#   mvn_version: '3.9.11'
+#     Pinned rather than left to the action default, which happens to be
+#     the same value today. This tree is brittle enough that a future
+#     default bump should be a deliberate, tested change. Maven 3.6.3
+#     (the JJB 'mvn36' setting) also works, but 3.9.11 brings Surefire
+#     3.2.5 instead of 2.12.4 and needs no deviation from the default.
+#
+# No Maven settings.xml is required. The only external dependencies are
+# com.amdocs.zusammen:zusammen-commons-{configuration,health,log,utils},
+# declared at ${project.version} and published on Maven Central, so the
+# verify lane needs no ONAP Nexus credentials.
+# =============================================================================
+name: 'Gerrit Verify'
+
+# yamllint disable-line rule:truthy
+on:
+  workflow_dispatch:
+    inputs:
+      GERRIT_BRANCH:
+        description: 'Branch that change is against'
+        required: false
+        type: string
+        default: ''
+      GERRIT_CHANGE_ID:
+        description: 'The ID for the change'
+        required: false
+        type: string
+        default: ''
+      GERRIT_CHANGE_NUMBER:
+        description: 'The Gerrit number'
+        required: false
+        type: string
+        default: ''
+      GERRIT_CHANGE_URL:
+        description: 'URL to the change'
+        required: false
+        type: string
+        default: ''
+      GERRIT_EVENT_TYPE:
+        description: 'Type of Gerrit event'
+        required: false
+        type: string
+        default: ''
+      GERRIT_PATCHSET_NUMBER:
+        description: 'The patch number for the change'
+        required: false
+        type: string
+        default: ''
+      GERRIT_PATCHSET_REVISION:
+        description: 'The revision sha'
+        required: false
+        type: string
+        default: ''
+      GERRIT_PROJECT:
+        description: 'Project in Gerrit'
+        required: false
+        type: string
+        default: ''
+      GERRIT_REFSPEC:
+        description: 'Gerrit refspec of change'
+        required: false
+        type: string
+        default: ''
+      GERRIT_DISABLED:
+        description: 'Run without Gerrit components'
+        required: false
+        default: false
+        type: boolean
+
+concurrency:
+  group: ${{ github.event.inputs.GERRIT_CHANGE_ID || github.run_id }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  # Clear any previous Verified vote so the change starts from a clean state.
+  clear-vote:
+    name: 'Clear Gerrit Vote'
+    if: inputs.GERRIT_DISABLED != true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 5
+    steps:
+      - name: 'Harden runner'
+        # yamllint disable-line rule:line-length
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1  # v2.21.1
+        with:
+          egress-policy: audit
+      - name: 'Clear votes'
+        # yamllint disable-line rule:line-length
+        uses: lfreleng-actions/gerrit-review-action@1e3eae766b3de755a2e87aa216cedebbaf9c8292  # v1.1.3
+        with:
+          host: ${{ vars.GERRIT_SERVER }}
+          username: ${{ vars.GERRIT_SSH_USER }}
+          key: ${{ secrets.GERRIT_SSH_PRIVKEY }}
+          known_hosts: ${{ vars.GERRIT_KNOWN_HOSTS }}
+          gerrit-change-number: ${{ inputs.GERRIT_CHANGE_NUMBER }}
+          gerrit-patchset-number: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
+          vote-type: clear
+      - name: 'Allow replication'
+        run: sleep 10s
+
+  build-test:
+    name: 'Maven Build/Test'
+    needs: clear-vote
+    if: >-
+      always()
+      && (needs.clear-vote.result == 'success'
+          || needs.clear-vote.result == 'skipped')
+    permissions:
+      contents: read
+      pull-requests: read  # repository-metadata-action queries PR data
+    # yamllint disable-line rule:line-length
+    uses: lfreleng-actions/java-workflows/.github/workflows/maven-build-test.yaml@b70c495c2a75745b7e1bcdcb8c64ad71df0d1ed3  # v0.2.2
+    with:
+      # When GERRIT_DISABLED is true the gerrit_* values are blanked so the
+      # reusable workflow falls back to a standard checkout.
+      # yamllint disable-line rule:line-length
+      gerrit_refspec: ${{ !inputs.GERRIT_DISABLED && inputs.GERRIT_REFSPEC || '' }}
+      # yamllint disable-line rule:line-length
+      gerrit_project: ${{ !inputs.GERRIT_DISABLED && inputs.GERRIT_PROJECT || '' }}
+      # yamllint disable-line rule:line-length
+      gerrit_branch: ${{ !inputs.GERRIT_DISABLED && inputs.GERRIT_BRANCH || '' }}
+      # gerrit_url falls back to the GERRIT_URL repository variable.
+      #
+      # See TOOLCHAIN NOTES above; each value is load-bearing.
+      java_version: '11'
+      mvn_version: '3.9.11'
+      run_jacoco: false
+      # yamllint disable-line rule:line-length
+      mvn_params: '-Dgpg.skip -Djacoco.skip=true -Dmaven.javadoc.skip=true'
+      # 79 of 79 tests pass on JDK 11, so the lane gates on them.
+      test_permit_fail: false
+
+  # Report the overall workflow conclusion back to Gerrit as a Verified vote.
+  vote:
+    name: 'Set Gerrit Vote'
+    if: ${{ always() && inputs.GERRIT_DISABLED != true }}
+    needs: [clear-vote, build-test]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # workflow-conclusion queries the Actions API to list this run's jobs
+      actions: read  # required by im-open/workflow-conclusion
+    timeout-minutes: 5
+    steps:
+      - name: 'Harden runner'
+        # yamllint disable-line rule:line-length
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1  # v2.21.1
+        with:
+          egress-policy: audit
+      - name: 'Get conclusion'
+        # yamllint disable-line rule:line-length
+        uses: im-open/workflow-conclusion@fce18569e28a9f2ed1feca1e6d4251e6a7365fdc  # v2.2.4
+      - name: 'Set vote'
+        # yamllint disable-line rule:line-length
+        uses: lfreleng-actions/gerrit-review-action@1e3eae766b3de755a2e87aa216cedebbaf9c8292  # v1.1.3
+        with:
+          host: ${{ vars.GERRIT_SERVER }}
+          username: ${{ vars.GERRIT_SSH_USER }}
+          key: ${{ secrets.GERRIT_SSH_PRIVKEY }}
+          known_hosts: ${{ vars.GERRIT_KNOWN_HOSTS }}
+          gerrit-change-number: ${{ inputs.GERRIT_CHANGE_NUMBER }}
+          gerrit-patchset-number: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
+          vote-type: ${{ env.WORKFLOW_CONCLUSION }}

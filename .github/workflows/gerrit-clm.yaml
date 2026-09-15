@@ -1,0 +1,196 @@
+---
+# SPDX-License-Identifier: Apache-2.0
+# SPDX-FileCopyrightText: 2026 The Linux Foundation
+
+# =============================================================================
+# Sonatype Lifecycle (Nexus IQ) dependency scan for sdc/zusammen.
+#
+# Replaces the JJB 'gerrit-maven-clm' job. The JJB form set
+# nexus-iq-namespace 'onap-' against project-name 'sdc-zusammen', which
+# this lane expresses directly as application_id 'onap-sdc-zusammen'.
+#
+# DEPLOYMENT NOTES:
+#   * Discovered by filename: it contains both 'gerrit' and the lane name.
+#   * Must exist on EVERY active branch; dispatches target
+#     refs/heads/{GERRIT_BRANCH}.
+#   * Requires repository variables GERRIT_SERVER, GERRIT_SSH_USER,
+#     GERRIT_KNOWN_HOSTS, GERRIT_URL, NEXUS_IQ_SERVER, NEXUS_IQ_USERNAME
+#     and the secrets GERRIT_SSH_PRIVKEY and NEXUS_IQ_PASSWORD.
+#   * Gerrit voting connects over SSH (tcp/29418); the harden-runner
+#     allow-list must carry that entry or the vote job fails in block mode.
+#
+# No settings.xml synthesis. The ONAP CLM examples describe five Nexus
+# server ids and the onap-public mirror, but this project resolves every
+# dependency from Maven Central -- the only external coordinates are
+# com.amdocs.zusammen:zusammen-commons-* at ${project.version} -- so the
+# pre-scan build needs no credentials. Add the maven_* inputs and the
+# maven_server_password secret if that ever stops being true.
+#
+# The pre-scan build carries the same three flags as the verify lane, for
+# the same reasons documented there: JaCoCo 0.7.7 kills the forked JVM on
+# any JDK >= 9, maven-gpg-plugin is bound to verify, and javadoc fetches
+# over plain HTTP from docs.oracle.com. -DskipTests is added on top: CLM
+# evaluates resolved dependencies, so running the suite would cost time
+# and buy nothing. java_version is 11 for the reasons in gerrit-verify;
+# the Nexus IQ CLI runs on iq_java_version (17) independently, which is
+# what stops the older build JDK breaking the scanner.
+# =============================================================================
+name: 'Gerrit CLM'
+
+# yamllint disable-line rule:truthy
+on:
+  workflow_dispatch:
+    inputs:
+      GERRIT_BRANCH:
+        description: 'Branch that change is against'
+        required: false
+        type: string
+        default: ''
+      GERRIT_CHANGE_ID:
+        description: 'The ID for the change'
+        required: false
+        type: string
+        default: ''
+      GERRIT_CHANGE_NUMBER:
+        description: 'The Gerrit number'
+        required: false
+        type: string
+        default: ''
+      GERRIT_CHANGE_URL:
+        description: 'URL to the change'
+        required: false
+        type: string
+        default: ''
+      GERRIT_EVENT_TYPE:
+        description: 'Type of Gerrit event'
+        required: false
+        type: string
+        default: ''
+      GERRIT_PATCHSET_NUMBER:
+        description: 'The patch number for the change'
+        required: false
+        type: string
+        default: ''
+      GERRIT_PATCHSET_REVISION:
+        description: 'The revision sha'
+        required: false
+        type: string
+        default: ''
+      GERRIT_PROJECT:
+        description: 'Project in Gerrit'
+        required: false
+        type: string
+        default: ''
+      GERRIT_REFSPEC:
+        description: 'Gerrit refspec of change'
+        required: false
+        type: string
+        default: ''
+      GERRIT_DISABLED:
+        description: 'Run without Gerrit components'
+        required: false
+        default: false
+        type: boolean
+
+concurrency:
+  # yamllint disable-line rule:line-length
+  group: clm-${{ github.event.inputs.GERRIT_CHANGE_ID || github.run_id }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  # Clear any previous Verified vote so the change starts from a clean state.
+  clear-vote:
+    name: 'Clear Gerrit Vote'
+    if: inputs.GERRIT_DISABLED != true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 5
+    steps:
+      - name: 'Harden runner'
+        # yamllint disable-line rule:line-length
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1  # v2.21.1
+        with:
+          egress-policy: audit
+      - name: 'Clear votes'
+        # yamllint disable-line rule:line-length
+        uses: lfreleng-actions/gerrit-review-action@1e3eae766b3de755a2e87aa216cedebbaf9c8292  # v1.1.3
+        with:
+          host: ${{ vars.GERRIT_SERVER }}
+          username: ${{ vars.GERRIT_SSH_USER }}
+          key: ${{ secrets.GERRIT_SSH_PRIVKEY }}
+          known_hosts: ${{ vars.GERRIT_KNOWN_HOSTS }}
+          gerrit-change-number: ${{ inputs.GERRIT_CHANGE_NUMBER }}
+          gerrit-patchset-number: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
+          vote-type: clear
+      - name: 'Allow replication'
+        run: sleep 10s
+
+  sonatype-lifecycle:
+    name: 'Sonatype Lifecycle Scan'
+    needs: clear-vote
+    if: >-
+      always()
+      && (needs.clear-vote.result == 'success'
+          || needs.clear-vote.result == 'skipped')
+    permissions:
+      contents: read
+    # yamllint disable-line rule:line-length
+    uses: lfreleng-actions/security-workflows/.github/workflows/sonatype-lifecycle.yaml@bdcf7d8d599788e3eb70e2d761c9f6abd49c06e5  # v0.7.0
+    with:
+      # yamllint disable-line rule:line-length
+      gerrit_refspec: ${{ !inputs.GERRIT_DISABLED && inputs.GERRIT_REFSPEC || '' }}
+      # yamllint disable-line rule:line-length
+      gerrit_project: ${{ !inputs.GERRIT_DISABLED && inputs.GERRIT_PROJECT || '' }}
+      # yamllint disable-line rule:line-length
+      gerrit_branch: ${{ !inputs.GERRIT_DISABLED && inputs.GERRIT_BRANCH || '' }}
+      # gerrit_url falls back to the GERRIT_URL repository variable.
+      #
+      # Matches the JJB nexus-iq-namespace 'onap-' plus project-name.
+      application_id: 'onap-sdc-zusammen'
+      #
+      # Build so the scan sees resolved dependencies.
+      build_type: 'maven'
+      java_version: '11'
+      mvn_version: '3.9.11'
+      # yamllint disable-line rule:line-length
+      mvn_params: '-DskipTests -Dgpg.skip -Djacoco.skip=true -Dmaven.javadoc.skip=true --fail-at-end'
+      # Dependency fetches from artifact CDNs are impractical to enumerate
+      # in the egress allow-list; audit the job rather than blocking it.
+      build_permit_egress_traffic: true
+    secrets:
+      nexus_iq_password: ${{ secrets.NEXUS_IQ_PASSWORD }}
+
+  # Report the overall workflow conclusion back to Gerrit as a Verified vote.
+  vote:
+    name: 'Set Gerrit Vote'
+    if: ${{ always() && inputs.GERRIT_DISABLED != true }}
+    needs: [clear-vote, sonatype-lifecycle]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # workflow-conclusion queries the Actions API to list this run's jobs
+      actions: read  # required by im-open/workflow-conclusion
+    timeout-minutes: 5
+    steps:
+      - name: 'Harden runner'
+        # yamllint disable-line rule:line-length
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1  # v2.21.1
+        with:
+          egress-policy: audit
+      - name: 'Get conclusion'
+        # yamllint disable-line rule:line-length
+        uses: im-open/workflow-conclusion@fce18569e28a9f2ed1feca1e6d4251e6a7365fdc  # v2.2.4
+      - name: 'Set vote'
+        # yamllint disable-line rule:line-length
+        uses: lfreleng-actions/gerrit-review-action@1e3eae766b3de755a2e87aa216cedebbaf9c8292  # v1.1.3
+        with:
+          host: ${{ vars.GERRIT_SERVER }}
+          username: ${{ vars.GERRIT_SSH_USER }}
+          key: ${{ secrets.GERRIT_SSH_PRIVKEY }}
+          known_hosts: ${{ vars.GERRIT_KNOWN_HOSTS }}
+          gerrit-change-number: ${{ inputs.GERRIT_CHANGE_NUMBER }}
+          gerrit-patchset-number: ${{ inputs.GERRIT_PATCHSET_NUMBER }}
+          vote-type: ${{ env.WORKFLOW_CONCLUSION }}
