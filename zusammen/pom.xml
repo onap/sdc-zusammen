@@ -39,12 +39,12 @@
     </developers>
     <url>http://maven.apache.org</url>
     <parent>
-        <groupId>org.onap.zusammen</groupId>
+        <groupId>org.onap.sdc.zusammen</groupId>
         <artifactId>zusammen</artifactId>
         <version>1.0.3-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
-    <groupId>org.onap.zusammen</groupId>
+    <groupId>org.onap.sdc.zusammen</groupId>
     <artifactId>amdocs-zusammen</artifactId>
     <packaging>pom</packaging>
     <modules>

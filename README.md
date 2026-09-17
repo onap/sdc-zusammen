@@ -2,7 +2,7 @@
 
 This is an ONAP-maintained fork of five upstream Amdocs Zusammen Maven reactors, vendored
 as sibling subdirectories under one aggregator `pom.xml` and republished under the
-`org.onap.zusammen` / `org.onap.zusammen.plugin` coordinates. Zusammen is the collaborative
+`org.onap.sdc.zusammen` / `org.onap.sdc.zusammen.plugin` coordinates. Zusammen is the collaborative
 versioned-document store that SDC's catalog backend uses to persist and diff VSP/service
 model content.
 
@@ -26,19 +26,19 @@ All imported sources keep their upstream `com.amdocs.zusammen.*` package names. 
 deliberate and must not change: SDC and other consumers resolve classes by that package,
 so renaming it would turn what should be a pure coordinate migration into a source rewrite
 that every downstream consumer would have to follow. Only the Maven `groupId`/`artifactId`
-coordinates move to `org.onap.zusammen[.plugin]`.
+coordinates move to `org.onap.sdc.zusammen[.plugin]`.
 
 ## Coordinates SDC consumes
 
 SDC pulls exactly seven artifacts out of this fork:
 
-- `org.onap.zusammen:zusammen-datatypes`
-- `org.onap.zusammen:zusammen-adaptor-inbound-api`
-- `org.onap.zusammen:zusammen-adaptor-inbound-impl`
-- `org.onap.zusammen:zusammen-commons-utils`
-- `org.onap.zusammen.plugin:zusammen-collaboration-cassandra-plugin`
-- `org.onap.zusammen.plugin:zusammen-state-store-cassandra-plugin`
-- `org.onap.zusammen.plugin:zusammen-search-index-empty-plugin`
+- `org.onap.sdc.zusammen:zusammen-datatypes`
+- `org.onap.sdc.zusammen:zusammen-adaptor-inbound-api`
+- `org.onap.sdc.zusammen:zusammen-adaptor-inbound-impl`
+- `org.onap.sdc.zusammen:zusammen-commons-utils`
+- `org.onap.sdc.zusammen.plugin:zusammen-collaboration-cassandra-plugin`
+- `org.onap.sdc.zusammen.plugin:zusammen-state-store-cassandra-plugin`
+- `org.onap.sdc.zusammen.plugin:zusammen-search-index-empty-plugin`
 
 ## Build
 

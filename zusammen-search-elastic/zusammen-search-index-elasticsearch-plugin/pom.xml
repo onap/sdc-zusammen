@@ -19,7 +19,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
     <parent>
-        <groupId>org.onap.zusammen.plugin</groupId>
+        <groupId>org.onap.sdc.zusammen.plugin</groupId>
         <artifactId>amdocs-zusammen-search-index</artifactId>
         <version>1.0.3-SNAPSHOT</version>
     </parent>
@@ -30,17 +30,17 @@
     <modelVersion>4.0.0</modelVersion>
     <dependencies>
         <dependency>
-            <groupId>org.onap.zusammen</groupId>
+            <groupId>org.onap.sdc.zusammen</groupId>
             <artifactId>zusammen-sdk</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>org.onap.zusammen</groupId>
+            <groupId>org.onap.sdc.zusammen</groupId>
             <artifactId>zusammen-commons-db-api</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>org.onap.zusammen</groupId>
+            <groupId>org.onap.sdc.zusammen</groupId>
             <artifactId>zusammen-commons-db-impl</artifactId>
             <version>${project.version}</version>
             <scope>runtime</scope>

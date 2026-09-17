@@ -38,12 +38,12 @@
     </developers>
     
     <parent>
-        <groupId>org.onap.zusammen</groupId>
+        <groupId>org.onap.sdc.zusammen</groupId>
         <artifactId>zusammen</artifactId>
         <version>1.0.3-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
-    <groupId>org.onap.zusammen.plugin</groupId>
+    <groupId>org.onap.sdc.zusammen.plugin</groupId>
     <artifactId>amdocs-zusammen-search-index</artifactId>
     <packaging>pom</packaging>
     <url>http://maven.apache.org</url>

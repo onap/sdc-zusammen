@@ -22,13 +22,13 @@
 
     <artifactId>zusammen-commons-log</artifactId>
     <parent>
-        <groupId>org.onap.zusammen</groupId>
+        <groupId>org.onap.sdc.zusammen</groupId>
         <artifactId>zusammen-commons</artifactId>
         <version>1.0.3-SNAPSHOT</version>
     </parent>
     <dependencies>
         <dependency>
-            <groupId>org.onap.zusammen</groupId>
+            <groupId>org.onap.sdc.zusammen</groupId>
             <artifactId>zusammen-commons-configuration</artifactId>
             <version>${project.version}</version>
         </dependency>

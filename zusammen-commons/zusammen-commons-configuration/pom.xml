@@ -21,7 +21,7 @@
     <packaging>jar</packaging>
     <dependencies>
         <dependency>
-            <groupId>org.onap.zusammen</groupId>
+            <groupId>org.onap.sdc.zusammen</groupId>
             <artifactId>zusammen-commons-utils</artifactId>
             <version>1.0.3-SNAPSHOT</version>
         </dependency>
@@ -36,7 +36,7 @@
     <artifactId>zusammen-commons-configuration</artifactId>
 
     <parent>
-        <groupId>org.onap.zusammen</groupId>
+        <groupId>org.onap.sdc.zusammen</groupId>
         <artifactId>zusammen-commons</artifactId>
         <version>1.0.3-SNAPSHOT</version>
     </parent>

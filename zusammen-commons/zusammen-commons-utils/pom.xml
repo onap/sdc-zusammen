@@ -22,7 +22,7 @@
     <packaging>jar</packaging>
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>org.onap.zusammen</groupId>
+        <groupId>org.onap.sdc.zusammen</groupId>
         <artifactId>zusammen-commons</artifactId>
         <version>1.0.3-SNAPSHOT</version>
     </parent>

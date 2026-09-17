@@ -20,7 +20,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>org.onap.zusammen</groupId>
+        <groupId>org.onap.sdc.zusammen</groupId>
         <artifactId>zusammen-adaptor-outbound</artifactId>
         <version>1.0.3-SNAPSHOT</version>
     </parent>
@@ -29,27 +29,27 @@
 
     <dependencies>
         <dependency>
-            <groupId>org.onap.zusammen</groupId>
+            <groupId>org.onap.sdc.zusammen</groupId>
             <artifactId>zusammen-core-api</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>org.onap.zusammen</groupId>
+            <groupId>org.onap.sdc.zusammen</groupId>
             <artifactId>zusammen-sdk</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>org.onap.zusammen</groupId>
+            <groupId>org.onap.sdc.zusammen</groupId>
             <artifactId>zusammen-datatypes</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>org.onap.zusammen</groupId>
+            <groupId>org.onap.sdc.zusammen</groupId>
             <artifactId>zusammen-commons-utils</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>org.onap.zusammen</groupId>
+            <groupId>org.onap.sdc.zusammen</groupId>
             <artifactId>zusammen-commons-health</artifactId>
             <version>${project.version}</version>
         </dependency>

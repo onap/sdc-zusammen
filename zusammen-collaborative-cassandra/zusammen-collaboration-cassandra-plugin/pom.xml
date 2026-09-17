@@ -20,7 +20,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>org.onap.zusammen.plugin</groupId>
+        <groupId>org.onap.sdc.zusammen.plugin</groupId>
         <artifactId>zusammen-collaborative-cassandra</artifactId>
         <version>1.0.3-SNAPSHOT</version>
     </parent>
@@ -30,23 +30,23 @@
 
     <dependencies>
         <dependency>
-            <groupId>org.onap.zusammen</groupId>
+            <groupId>org.onap.sdc.zusammen</groupId>
             <artifactId>zusammen-sdk</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>org.onap.zusammen</groupId>
+            <groupId>org.onap.sdc.zusammen</groupId>
             <artifactId>zusammen-commons-db-api</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>org.onap.zusammen</groupId>
+            <groupId>org.onap.sdc.zusammen</groupId>
             <artifactId>zusammen-commons-db-impl</artifactId>
             <version>${project.version}</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
-            <groupId>org.onap.zusammen.plugin</groupId>
+            <groupId>org.onap.sdc.zusammen.plugin</groupId>
             <artifactId>zusammen-state-store-cassandra-plugin</artifactId>
             <version>${project.version}</version>
         </dependency>
@@ -63,7 +63,7 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.onap.zusammen</groupId>
+            <groupId>org.onap.sdc.zusammen</groupId>
             <artifactId>zusammen-commons-utils</artifactId>
             <version>${project.version}</version>
         </dependency>
