@@ -1,6 +1,6 @@
 {
+  "level": 1,
   "configuration": {
-    "level": 1,
     "plugins": {
       "zusammen_search_index": {
         "implementationClass": "com.amdocs.zusammen.plugin.searchindex.elasticsearch.impl.SearchIndexElasticImpl"
