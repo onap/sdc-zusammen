@@ -103,6 +103,31 @@ public class AggregateConfigurationFilesTest {
         Assert.assertEquals(stateStore.getProperties().get("cassandra.ssl"), "true");
     }
 
+    /**
+     * level is a member of ConfigurationInfo and only orders a descriptor when it is written as a
+     * sibling of configuration. Nested inside configuration it has no member to bind to, so the
+     * parser drops it and the descriptor is ordered at the default 0 - losing even to level 1.
+     */
+    @Test
+    public void testAggregateIgnoresLevelNestedInsideConfiguration() {
+        String nestedLevel10 =
+                "{"
+                        + "  \"configuration\": {"
+                        + "    \"level\": 10,"
+                        + "    \"plugins\": {"
+                        + "      \"zusammen_state_store\": {"
+                        + "        \"implementationClass\": \"com.example.NestedLevelStateStore\""
+                        + "      }"
+                        + "    }"
+                        + "  }"
+                        + "}";
+
+        Assert.assertEquals(aggregate(nestedLevel10, LEVEL_1_BASE).getPlugins().get(STATE_STORE)
+                .getImplementationClass(), "com.example.BaseStateStore");
+        Assert.assertEquals(aggregate(LEVEL_1_BASE, nestedLevel10).getPlugins().get(STATE_STORE)
+                .getImplementationClass(), "com.example.BaseStateStore");
+    }
+
     @Test
     public void testAggregateAddsPropertyThatOnlyTheHigherLevelDeclares() {
         String base = descriptor(1, "\"cassandra.keyspace\": \"zusammen\"");
@@ -113,6 +138,18 @@ public class AggregateConfigurationFilesTest {
         Assert.assertEquals(configuration.getProperties().size(), 2);
         Assert.assertEquals(configuration.getProperties().get("cassandra.keyspace"), "zusammen");
         Assert.assertEquals(configuration.getProperties().get("cassandra.datacenter"), "dc1");
+    }
+
+    @Test
+    public void testAggregateDropsBasePropertyWhenOverrideValueIsNull() {
+        Configuration configuration =
+                aggregate(LEVEL_1_BASE, descriptor(5, "\"cassandra.port\": null"));
+
+        Assert.assertEquals(configuration.getProperties().get("cassandra.keyspace"),
+                "zusammen_base");
+        // the key survives: overrideProperties removes it and then puts the whole override map back
+        // with putAll, so only the resolved value can be asserted on, not containsKey
+        Assert.assertNull(configuration.getProperties().get("cassandra.port"));
     }
 
     @Test
