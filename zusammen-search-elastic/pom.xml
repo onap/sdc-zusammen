@@ -50,7 +50,6 @@
     <properties>
         <java.source>1.8</java.source>
         <java.target>1.8</java.target>
-        <mockito.version>1.10.19</mockito.version>
         <maven-source-plugin.version>3.0.1</maven-source-plugin.version>
         <maven-javadoc-plugin.version>2.10.4</maven-javadoc-plugin.version>
     </properties>

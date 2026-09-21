@@ -32,7 +32,7 @@ import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
 import org.testng.annotations.Test;
 
-import static org.mockito.Matchers.anyObject;
+import static org.mockito.ArgumentMatchers.any;
 import static org.testng.Assert.assertEquals;
 
 public class HealthCheckSearchPluginTest {
@@ -63,8 +63,8 @@ public class HealthCheckSearchPluginTest {
                 new String[]{}
                 , ClusterState.PROTO);
         healthResponse.setStatus(inColor);
-        Mockito.when(elasticSearchDaoMock.checkHealth(anyObject())).thenReturn(healthResponse);
-        Mockito.when(elementSearchIndex.checkHealth(anyObject())).thenReturn(healthResponse);
+        Mockito.when(elasticSearchDaoMock.checkHealth(any())).thenReturn(healthResponse);
+        Mockito.when(elementSearchIndex.checkHealth(any())).thenReturn(healthResponse);
     }
 
     private void checkResult(HealthStatus healthStatus) {

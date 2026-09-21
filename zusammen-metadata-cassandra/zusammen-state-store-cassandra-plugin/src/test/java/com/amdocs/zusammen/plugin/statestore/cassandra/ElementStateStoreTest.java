@@ -40,8 +40,8 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.Optional;
 
-import static org.mockito.Matchers.anyObject;
-import static org.mockito.Matchers.eq;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -66,7 +66,7 @@ public class ElementStateStoreTest {
   @BeforeMethod
   public void setUp() throws Exception {
     MockitoAnnotations.initMocks(this);
-    when(elementStateStore.getElementRepository(anyObject())).thenReturn(elementRepositoryMock);
+    when(elementStateStore.getElementRepository(any())).thenReturn(elementRepositoryMock);
   }
 
   @Test
@@ -85,7 +85,7 @@ public class ElementStateStoreTest {
     ElementEntity retrievedElement = getRetrievedElement(new Id(), new Id(), "elm1");
 
     doReturn(Optional.of(retrievedElement))
-        .when(elementRepositoryMock).get(anyObject(), anyObject(), anyObject());
+        .when(elementRepositoryMock).get(any(), any(), any());
 
 
     boolean elementExist =
@@ -97,7 +97,7 @@ public class ElementStateStoreTest {
   @Test
   public void testIsElementExistWhenNot() throws Exception {
     doReturn(Optional.empty())
-        .when(elementRepositoryMock).get(anyObject(), anyObject(), anyObject());
+        .when(elementRepositoryMock).get(any(), any(), any());
 
     ElementContext elementContext = TestUtils.createElementContext(new Id(), new Id());
     boolean elementExist = elementStateStore.isElementExist(context, elementContext, new Id());
@@ -109,7 +109,7 @@ public class ElementStateStoreTest {
   public void testGetElementNamespace() throws Exception {
     Namespace retrievedNamespace = new Namespace(Namespace.ROOT_NAMESPACE, new Id());
     doReturn(Optional.of(retrievedNamespace))
-        .when(elementRepositoryMock).getNamespace(anyObject(), anyObject(), anyObject());
+        .when(elementRepositoryMock).getNamespace(any(), any(), any());
 
     Namespace namespace =
         elementStateStore.getElementNamespace(context, elementContext.getItemId(), new Id());
@@ -120,7 +120,7 @@ public class ElementStateStoreTest {
   @Test
   public void testGetNonExistingElementNamespace() throws Exception {
     doReturn(Optional.empty())
-        .when(elementRepositoryMock).getNamespace(anyObject(), anyObject(), anyObject());
+        .when(elementRepositoryMock).getNamespace(any(), any(), any());
 
     Namespace namespace =
         elementStateStore.getElementNamespace(context, elementContext.getItemId(), new Id());
@@ -133,7 +133,7 @@ public class ElementStateStoreTest {
     ElementEntity retrievedElement = getRetrievedElement(new Id(), new Id(), "elm1");
 
     doReturn(Optional.of(retrievedElement))
-        .when(elementRepositoryMock).get(anyObject(), anyObject(), anyObject());
+        .when(elementRepositoryMock).get(any(), any(), any());
 
     ElementContext elementContext = TestUtils.createElementContext(new Id(), new Id());
     StateElement element =
@@ -146,7 +146,7 @@ public class ElementStateStoreTest {
   @Test
   public void testGetNonExistingElement() throws Exception {
     doReturn(Optional.empty())
-        .when(elementRepositoryMock).get(anyObject(), anyObject(), anyObject());
+        .when(elementRepositoryMock).get(any(), any(), any());
 
     ElementContext elementContext = TestUtils.createElementContext(new Id(), new Id());
     StateElement element = elementStateStore.getElement(context, elementContext, new Id());
@@ -166,7 +166,7 @@ public class ElementStateStoreTest {
 
     elementStateStore.createElement(context, element);
 
-    verify(elementRepositoryMock).create(anyObject(), anyObject(), elementEntityCaptor.capture());
+    verify(elementRepositoryMock).create(any(), any(), elementEntityCaptor.capture());
     assertElementEquals(elementEntityCaptor.getValue(), element);
   }
 
@@ -175,7 +175,7 @@ public class ElementStateStoreTest {
     Id parentId = new Id();
     ElementEntity retrievedElement = getRetrievedElement(new Id(), parentId, "elm1");
     doReturn(Optional.of(retrievedElement))
-        .when(elementRepositoryMock).get(anyObject(), anyObject(), anyObject());
+        .when(elementRepositoryMock).get(any(), any(), any());
 
     StateElement element =
         new StateElement(new Id(), new Id(), new Namespace(Namespace.ROOT_NAMESPACE, parentId),
@@ -186,7 +186,7 @@ public class ElementStateStoreTest {
 
     elementStateStore.updateElement(context, element);
 
-    verify(elementRepositoryMock).update(anyObject(), anyObject(), elementEntityCaptor.capture());
+    verify(elementRepositoryMock).update(any(), any(), elementEntityCaptor.capture());
     assertElementEquals(elementEntityCaptor.getValue(), element);
   }
 
@@ -215,7 +215,7 @@ public class ElementStateStoreTest {
 
     elementStateStore.deleteElement(context, element);
 
-    verify(elementRepositoryMock, times(3)).delete(anyObject(), anyObject(), anyObject());
+    verify(elementRepositoryMock, times(3)).delete(any(), any(), any());
     verify(elementRepositoryMock)
         .delete(eq(context), eq(elementEntityContext), eq(retrievedElement));
     retrievedElement.getSubElementIds().stream()

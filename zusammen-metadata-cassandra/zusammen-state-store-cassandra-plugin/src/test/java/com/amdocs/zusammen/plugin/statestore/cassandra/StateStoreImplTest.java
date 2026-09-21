@@ -33,7 +33,7 @@ import org.testng.annotations.Test;
 
 import java.util.Date;
 
-import static org.mockito.Matchers.anyObject;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 
 public class StateStoreImplTest {
@@ -139,8 +139,8 @@ public class StateStoreImplTest {
     /*verify(versionStateStoreMock)
         .createItemVersion(context, space, itemId, baseVersionId, versionId, data, creationTime);*/
     verify(versionStateStoreMock)
-        .createItemVersion(anyObject(), anyObject(), anyObject(), anyObject(), anyObject(),
-            anyObject(), anyObject());
+        .createItemVersion(any(), any(), any(), any(), any(),
+            any(), any());
   }
 
   @Test
@@ -150,8 +150,8 @@ public class StateStoreImplTest {
    /* verify(versionStateStoreMock).updateItemVersion(context, space, itemId, versionId, data,
         modificationTime);*/
     verify(versionStateStoreMock)
-        .updateItemVersion(anyObject(), anyObject(), anyObject(), anyObject(), anyObject(),
-            anyObject());
+        .updateItemVersion(any(), any(), any(), any(), any(),
+            any());
   }
 
   @Test

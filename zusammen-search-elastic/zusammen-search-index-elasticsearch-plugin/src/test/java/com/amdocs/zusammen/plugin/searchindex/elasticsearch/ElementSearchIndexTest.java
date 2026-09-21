@@ -41,8 +41,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-import static org.mockito.Matchers.anyObject;
-import static org.mockito.Matchers.anyString;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 
 public class ElementSearchIndexTest {
 
@@ -60,11 +60,11 @@ public class ElementSearchIndexTest {
     MockitoAnnotations.initMocks(this);
 
     Mockito.when(elasticSearchDaoMock
-        .create(anyObject(), anyString(), anyString(), anyString(), anyString()))
+        .create(any(), anyString(), anyString(), anyString(), anyString()))
         .thenReturn(new IndexResponse());
-    Mockito.when(elasticSearchDaoMock.get(anyObject(), anyString(), anyString(), anyString()))
+    Mockito.when(elasticSearchDaoMock.get(any(), anyString(), anyString(), anyString()))
         .thenReturn(getResponseMock);
-    Mockito.when(elasticSearchDaoMock.delete(anyObject(), anyString(), anyString(), anyString()))
+    Mockito.when(elasticSearchDaoMock.delete(any(), anyString(), anyString(), anyString()))
         .thenReturn(deleteResponseMock);
   }
 
@@ -148,7 +148,7 @@ public class ElementSearchIndexTest {
             Namespace.ROOT_NAMESPACE, elementId
         );
 
-    Mockito.when(elasticSearchDaoMock.get(anyObject(), anyString(), anyString(), anyString()))
+    Mockito.when(elasticSearchDaoMock.get(any(), anyString(), anyString(), anyString()))
         .thenThrow(new IndexNotFoundException("indexnotfound"));
     elementSearchIndex.updateElement(sessionContext, element);
 

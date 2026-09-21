@@ -51,7 +51,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static org.mockito.Matchers.anyObject;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -81,13 +81,13 @@ public class ElementManagerImplTest {
   public void setUp() throws Exception {
     MockitoAnnotations.initMocks(this);
 
-    when(elementManager.getItemVersionManager(anyObject())).thenReturn(versionManagerMock);
-    when(elementManager.getStateAdaptor(anyObject())).thenReturn(stateAdaptorMock);
-    when(elementManager.getCollaborationAdaptor(anyObject())).thenReturn(collaborationAdaptorMock);
-    when(elementManager.getSearchIndexAdaptor(anyObject())).thenReturn(searchIndexAdaptorMock);
+    when(elementManager.getItemVersionManager(any())).thenReturn(versionManagerMock);
+    when(elementManager.getStateAdaptor(any())).thenReturn(stateAdaptorMock);
+    when(elementManager.getCollaborationAdaptor(any())).thenReturn(collaborationAdaptorMock);
+    when(elementManager.getSearchIndexAdaptor(any())).thenReturn(searchIndexAdaptorMock);
 
     doReturn(true)
-        .when(versionManagerMock).isExist(anyObject(), anyObject(), anyObject(), anyObject());
+        .when(versionManagerMock).isExist(any(), any(), any(), any());
   }
 
   @Test

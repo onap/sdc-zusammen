@@ -43,8 +43,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import static org.mockito.Matchers.anyObject;
-import static org.mockito.Matchers.anyString;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 
 
 public class SearchIndexServicesTest {
@@ -57,7 +57,7 @@ public class SearchIndexServicesTest {
   @BeforeMethod(alwaysRun = true)
   public void injectDoubles() {
     MockitoAnnotations.initMocks(this);
-    Mockito.when(elasticSearchDaoMock.search(anyObject(), anyString(), anyObject()))
+    Mockito.when(elasticSearchDaoMock.search(any(), anyString(), any()))
         .thenReturn(new SearchResponse());
 
   }

@@ -38,7 +38,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 
-import static org.mockito.Matchers.anyObject;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -61,7 +61,7 @@ public class ItemStateStoreTest {
   @BeforeMethod
   public void setUp() throws Exception {
     MockitoAnnotations.initMocks(this);
-    when(itemStateStore.getItemDao(anyObject())).thenReturn(itemDaoMock);
+    when(itemStateStore.getItemDao(any())).thenReturn(itemDaoMock);
   }
 
   @Test
@@ -146,7 +146,7 @@ public class ItemStateStoreTest {
 
     verify(versionStateStore).listItemVersions(context, space, itemId);
     verify(versionStateStore, times(3))
-        .deleteItemVersion(anyObject(), anyObject(), anyObject(), anyObject());
+        .deleteItemVersion(any(), any(), any(), any());
     verify(versionStateStore).deleteItemVersion(context, Space.PRIVATE, itemId, v1.getId());
     verify(versionStateStore).deleteItemVersion(context, Space.PRIVATE, itemId, v2.getId());
     verify(versionStateStore).deleteItemVersion(context, Space.PRIVATE, itemId, v2.getId());
