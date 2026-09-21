@@ -20,25 +20,44 @@
 #     allow-list must carry that entry or the vote job fails in block mode.
 #
 # No settings.xml synthesis. The ONAP CLM examples describe five Nexus
-# server ids and the onap-public mirror, but this project resolves every
-# dependency from Maven Central -- the only external coordinates are
-# com.amdocs.zusammen:zusammen-commons-* at ${project.version} -- so the
+# server ids and the onap-public mirror, but zusammen-commons is a module
+# of this reactor and everything else resolves from Maven Central, so the
 # pre-scan build needs no credentials. Add the maven_* inputs and the
 # maven_server_password secret if that ever stops being true.
 #
-# The pre-scan build carries the same three flags as the verify lane, for
-# the same reasons documented there: JaCoCo 0.7.7 kills the forked JVM on
-# any JDK >= 9, maven-gpg-plugin is bound to verify, and javadoc fetches
-# over plain HTTP from docs.oracle.com. -DskipTests is added on top: CLM
-# evaluates resolved dependencies, so running the suite would cost time
-# and buy nothing. java_version is 11 for the reasons in gerrit-verify;
-# the Nexus IQ CLI runs on iq_java_version (17) independently, which is
-# what stops the older build JDK breaking the scanner.
+# The pre-scan build carries -Dmaven.javadoc.skip=true for the reason
+# documented in the verify lane: javadoc resolves detectJavaApiLink over
+# plain HTTP to docs.oracle.com, an egress dependency this lane has no
+# need of. -DskipTests goes with it because CLM evaluates resolved
+# dependencies, so running the suite would cost time and buy nothing.
+# java_version is 11 for the reasons in gerrit-verify; the Nexus IQ CLI
+# runs on iq_java_version (17) independently, which is what stops the
+# older build JDK breaking the scanner.
+#
+# SCHEDULE:
+#   Sonatype Lifecycle scores the dependency tree against an advisory
+#   feed that moves without the code. This fork changes perhaps twice a
+#   year, so the cron is the trigger that surfaces a newly published CVE;
+#   the patchset dispatch only ever covers commits. 04:17 UTC on Mondays,
+#   off the hour because scheduled runs on the hour contend with everyone
+#   else's, and early Monday so a finding is waiting at the start of the
+#   week. Cron fires on the default branch only, whatever other branches
+#   exist, and GitHub suspends it in a repository with no commit activity
+#   for 60 days -- on a fork this quiet the schedule may need re-enabling
+#   from the Actions tab.
+#
+#   A scheduled run carries no workflow inputs. clear-vote and vote SSH
+#   to Gerrit with a change and patchset number, so both are restricted
+#   to workflow_dispatch; the scan tolerates a skipped clear-vote, and
+#   the absent inputs leave gerrit_refspec/project/branch empty, which
+#   is the plain default-branch checkout GERRIT_DISABLED also takes.
 # =============================================================================
 name: 'Gerrit CLM'
 
 # yamllint disable-line rule:truthy
 on:
+  schedule:
+    - cron: '17 4 * * 1'
   workflow_dispatch:
     inputs:
       GERRIT_BRANCH:
@@ -103,7 +122,9 @@ jobs:
   # Clear any previous Verified vote so the change starts from a clean state.
   clear-vote:
     name: 'Clear Gerrit Vote'
-    if: inputs.GERRIT_DISABLED != true
+    if: >-
+      github.event_name == 'workflow_dispatch'
+      && inputs.GERRIT_DISABLED != true
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -155,8 +176,7 @@ jobs:
       build_type: 'maven'
       java_version: '11'
       mvn_version: '3.9.11'
-      # yamllint disable-line rule:line-length
-      mvn_params: '-DskipTests -Dgpg.skip -Djacoco.skip=true -Dmaven.javadoc.skip=true --fail-at-end'
+      mvn_params: '-DskipTests -Dmaven.javadoc.skip=true --fail-at-end'
       # Dependency fetches from artifact CDNs are impractical to enumerate
       # in the egress allow-list; audit the job rather than blocking it.
       build_permit_egress_traffic: true
@@ -166,7 +186,10 @@ jobs:
   # Report the overall workflow conclusion back to Gerrit as a Verified vote.
   vote:
     name: 'Set Gerrit Vote'
-    if: ${{ always() && inputs.GERRIT_DISABLED != true }}
+    if: >-
+      always()
+      && github.event_name == 'workflow_dispatch'
+      && inputs.GERRIT_DISABLED != true
     needs: [clear-vote, sonatype-lifecycle]
     runs-on: ubuntu-latest
     permissions:
