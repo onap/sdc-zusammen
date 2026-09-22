@@ -25,9 +25,9 @@ import com.datastax.driver.core.policies.*;
 import com.datastax.driver.mapping.MappingManager;
 
 import javax.net.ssl.SSLContext;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 
@@ -39,7 +39,7 @@ class CassandraConnectionFactory {
     private static final String TENANT_KEYSPACE_PREFIX = DEFAULT_KEYSPACE + "_";
 
     private static Cluster cluster = initCluster();
-    private static Map<String, MappingManager> mappingManagerByKeyspace = new HashMap<>();
+    private static Map<String, MappingManager> mappingManagerByKeyspace = new ConcurrentHashMap<>();
 
     static Configuration getConfiguration() {
         return cluster.getConfiguration();
