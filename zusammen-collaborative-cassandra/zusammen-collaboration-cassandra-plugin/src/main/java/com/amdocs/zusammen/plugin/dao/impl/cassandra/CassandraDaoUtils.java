@@ -3,6 +3,7 @@ package com.amdocs.zusammen.plugin.dao.impl.cassandra;
 import com.amdocs.zusammen.commons.db.api.cassandra.CassandraConnectorFactory;
 import com.amdocs.zusammen.commons.db.api.cassandra.types.CassandraContext;
 import com.amdocs.zusammen.datatypes.SessionContext;
+import com.datastax.driver.core.Session;
 import com.datastax.driver.core.TypeCodec;
 
 class CassandraDaoUtils {
@@ -14,6 +15,12 @@ class CassandraDaoUtils {
     return CassandraConnectorFactory.getInstance().createInterface()
         .getMappingManager(getCassandraContext(context))
         .createAccessor(classOfT);
+  }
+
+  static Session getSession(SessionContext context) {
+    return CassandraConnectorFactory.getInstance().createInterface()
+        .getMappingManager(getCassandraContext(context))
+        .getSession();
   }
 
   static void registerCodecs(TypeCodec... codecs) {
