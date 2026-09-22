@@ -23,6 +23,10 @@ import com.amdocs.zusammen.datatypes.item.Info;
 import com.amdocs.zusammen.datatypes.item.ItemVersion;
 import com.amdocs.zusammen.datatypes.item.ItemVersionData;
 import com.amdocs.zusammen.datatypes.item.Relation;
+import com.amdocs.zusammen.datatypes.response.Module;
+import com.amdocs.zusammen.datatypes.response.ReturnCode;
+import com.amdocs.zusammen.datatypes.response.ZusammenException;
+import org.testng.Assert;
 
 import java.util.Arrays;
 
@@ -51,5 +55,36 @@ public class TestUtils {
     data.setRelations(Arrays.asList(new Relation(), new Relation()));
     version.setData(data);
     return version;
+  }
+
+  /**
+   * Runs an action that is expected to fail and hands back the {@link ReturnCode} the resulting
+   * {@link ZusammenException} carries, so the caller can assert on it.
+   */
+  public static ReturnCode captureFailure(Runnable action) {
+    try {
+      action.run();
+    } catch (ZusammenException exception) {
+      Assert.assertNotNull(exception.getReturnCode(), "ZusammenException without a ReturnCode");
+      return exception.getReturnCode();
+    }
+    Assert.fail("Expected a ZusammenException but none was thrown");
+    return null;
+  }
+
+  public static void assertErrorCode(ReturnCode returnCode, Module module, int errorCode) {
+    // ReturnCode keeps its ErrorCode private with no getter, so toString is the only way in:
+    // it starts with "<module>-<errorCode>".
+    Assert.assertTrue(returnCode.toString().startsWith(module.name() + "-" + errorCode),
+        "expected error code " + module.name() + "-" + errorCode + " but got " + returnCode);
+  }
+
+  /**
+   * Asserts that a plugin/adaptor level failure was wrapped rather than swallowed: the core
+   * error code is reported and the originating ReturnCode is kept as the cause.
+   */
+  public static void assertWrappedFailure(ReturnCode returnCode, int errorCode, ReturnCode cause) {
+    assertErrorCode(returnCode, Module.ZDB, errorCode);
+    Assert.assertSame(returnCode.getReturnCode(), cause);
   }
 }
