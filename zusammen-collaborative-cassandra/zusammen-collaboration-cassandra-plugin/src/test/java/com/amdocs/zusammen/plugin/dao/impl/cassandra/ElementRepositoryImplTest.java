@@ -207,6 +207,36 @@ public class ElementRepositoryImplTest {
     }
 
     @Test
+    public void testCreateRegistersTheParentSoASiblingCanStillResolveItInTheSameRevision() {
+        Map<String, String> stored = new HashMap<>();
+        givenStatefulVersionElements(PUBLIC_SPACE, "revision-3", stored);
+        givenElement(PUBLIC_SPACE, "parent-5", "revision-3", fullElementRow());
+        ElementEntityContext publicContext = new ElementEntityContext(PUBLIC_SPACE, ITEM_ID, VERSION_ID, REVISION_ID);
+
+        repository.create(context, publicContext, fullElement());
+
+        Assert.assertTrue(repository.get(context, publicContext, new ElementEntity(PARENT_ID)).isPresent(),
+                "a sibling published after this element resolves the shared parent through element_ids, so the "
+                        + "revision the create registered for the parent has to be readable straight away");
+    }
+
+    @Test
+    public void testUpdateResolvesAnElementRegisteredEarlierUnderTheSameRevision() {
+        Map<String, String> stored = new HashMap<>();
+        givenStatefulVersionElements(PUBLIC_SPACE, "revision-3", stored);
+        ElementEntityContext publicContext = new ElementEntityContext(PUBLIC_SPACE, ITEM_ID, VERSION_ID, REVISION_ID);
+        ElementEntity element = fullElement();
+        element.setParentId(null);
+
+        repository.create(context, publicContext, element);
+        repository.update(context, publicContext, element);
+
+        verify(elementAccessor).update(Mockito.anyString(), Mockito.anyString(), Mockito.any(), Mockito.any(),
+                Mockito.any(), eq("hash-6"), eq(PUBLIC_SPACE), eq("item-1"), eq("version-2"), eq("element-4"),
+                eq("revision-3"));
+    }
+
+    @Test
     public void testUpdateUpdatesInPlaceWhenElementAlreadyLivesOnTheContextRevision() {
         givenVersionElements(SPACE, "revision-3",
                 versionElementsRow(Collections.singletonMap("element-4", "revision-3")));
@@ -465,6 +495,20 @@ public class ElementRepositoryImplTest {
 
     private void givenVersionElements(String space, String revisionId, Row row) {
         doReturn(resultSetOf(row)).when(versionElementsAccessor).get(space, "item-1", "version-2", revisionId);
+    }
+
+    /**
+     * Makes the version_elements row behave like Cassandra rather than like a fixed stub: what
+     * {@code addElements} writes is what a later read returns.
+     */
+    private void givenStatefulVersionElements(String space, String revisionId, Map<String, String> stored) {
+        doReturn(resultSetOf(versionElementsRow(stored))).when(versionElementsAccessor)
+                .get(space, "item-1", "version-2", revisionId);
+        Mockito.doAnswer(invocation -> {
+            stored.putAll(invocation.getArgument(0));
+            return null;
+        }).when(versionElementsAccessor)
+                .addElements(Mockito.anyMap(), eq(space), eq("item-1"), eq("version-2"), eq(revisionId));
     }
 
     private void givenRevisions(List<Row> rows) {
