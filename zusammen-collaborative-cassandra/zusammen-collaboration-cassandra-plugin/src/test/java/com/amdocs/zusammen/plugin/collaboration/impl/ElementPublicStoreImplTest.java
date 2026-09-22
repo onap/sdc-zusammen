@@ -56,7 +56,6 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
 
 public class ElementPublicStoreImplTest {
 
@@ -148,45 +147,59 @@ public class ElementPublicStoreImplTest {
   }
 
   @Test
-  public void testListSynchronizationStatesSkipsElementsWithoutSyncState() throws Exception {
-    Id withState = new Id("withState");
+  public void testListSynchronizationStatesKeepsOnlyTheRevisionTheVersionPointsAt()
+      throws Exception {
+    Id onRevisionA = new Id("onRevisionA");
+    Id onRevisionB = new Id("onRevisionB");
     Id withoutState = new Id("withoutState");
     Map<Id, Id> ids = new HashMap<>();
-    ids.put(withState, new Id("revisionA"));
+    ids.put(onRevisionA, new Id("revisionA"));
+    ids.put(onRevisionB, new Id("revisionB"));
     ids.put(withoutState, new Id("revisionB"));
     doReturn(ids).when(elementRepositoryMock).listIds(any(), any());
 
-    SynchronizationStateEntity syncState =
-        new SynchronizationStateEntity(withState, new Id("revisionA"), new Date(1000L), false);
-    doAnswer(invocation -> {
-      SynchronizationStateEntity requested = invocation.getArgument(2);
-      return withState.equals(requested.getId()) ? Optional.of(syncState) : Optional.empty();
-    }).when(elementSyncStateRepositoryMock).get(any(), any(), any());
+    SynchronizationStateEntity wantedOfA =
+        new SynchronizationStateEntity(onRevisionA, new Id("revisionA"), new Date(1000L), false);
+    SynchronizationStateEntity wantedOfB =
+        new SynchronizationStateEntity(onRevisionB, new Id("revisionB"), new Date(2000L), false);
+    // the same two elements as they were published in the version's earlier revisions, which the
+    // partition read returns as well
+    SynchronizationStateEntity staleOfA =
+        new SynchronizationStateEntity(onRevisionA, new Id("revisionB"), new Date(3000L), false);
+    SynchronizationStateEntity staleOfB =
+        new SynchronizationStateEntity(onRevisionB, new Id("revisionA"), new Date(4000L), false);
+    doReturn(Arrays.asList(staleOfA, wantedOfA, staleOfB, wantedOfB))
+        .when(elementSyncStateRepositoryMock).listPerRevision(any(), any());
 
     Collection<SynchronizationStateEntity> syncStates =
         elementPublicStore.listSynchronizationStates(context, elementContext);
 
-    Assert.assertEquals(syncStates.size(), 1);
-    Assert.assertSame(syncStates.iterator().next(), syncState);
-
-    ArgumentCaptor<SynchronizationStateEntity> requestedCaptor =
-        ArgumentCaptor.forClass(SynchronizationStateEntity.class);
-    verify(elementSyncStateRepositoryMock, org.mockito.Mockito.times(2))
-        .get(same(context), any(), requestedCaptor.capture());
-    Map<Id, Id> requestedRevisionsById = new HashMap<>();
-    for (SynchronizationStateEntity requested : requestedCaptor.getAllValues()) {
-      requestedRevisionsById.put(requested.getId(), requested.getRevisionId());
+    Map<Id, Id> revisionIdsById = new HashMap<>();
+    for (SynchronizationStateEntity syncState : syncStates) {
+      revisionIdsById.put(syncState.getId(), syncState.getRevisionId());
     }
-    Assert.assertEquals(requestedRevisionsById, ids);
+    Map<Id, Id> expectedRevisionIdsById = new HashMap<>();
+    expectedRevisionIdsById.put(onRevisionA, new Id("revisionA"));
+    expectedRevisionIdsById.put(onRevisionB, new Id("revisionB"));
+    Assert.assertEquals(revisionIdsById, expectedRevisionIdsById);
+
+    ArgumentCaptor<ElementEntityContext> contextCaptor =
+        ArgumentCaptor.forClass(ElementEntityContext.class);
+    verify(elementSyncStateRepositoryMock).listPerRevision(same(context), contextCaptor.capture());
+    assertPublicContext(contextCaptor.getValue());
+    verify(elementSyncStateRepositoryMock, never()).get(any(), any(), any());
+    verify(elementSyncStateRepositoryMock, never()).list(any(), any());
   }
 
   @Test
-  public void testListSynchronizationStatesWhenNoElements() throws Exception {
+  public void testListSynchronizationStatesSkipsThePartitionReadWhenTheVersionHasNoElements()
+      throws Exception {
     doReturn(new HashMap<Id, Id>()).when(elementRepositoryMock).listIds(any(), any());
 
     Assert.assertTrue(
         elementPublicStore.listSynchronizationStates(context, elementContext).isEmpty());
-    verifyNoInteractions(elementSyncStateRepositoryMock);
+    verify(elementSyncStateRepositoryMock, never()).listPerRevision(any(), any());
+    verify(elementSyncStateRepositoryMock, never()).get(any(), any(), any());
   }
 
   @Test
