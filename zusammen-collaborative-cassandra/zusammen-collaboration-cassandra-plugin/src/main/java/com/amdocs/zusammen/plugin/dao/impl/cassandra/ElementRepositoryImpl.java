@@ -28,6 +28,7 @@ import com.amdocs.zusammen.plugin.statestore.cassandra.dao.types.ElementEntityCo
 import com.amdocs.zusammen.utils.fileutils.json.JsonUtil;
 import com.datastax.driver.core.ResultSet;
 import com.datastax.driver.core.Row;
+import com.datastax.driver.core.Statement;
 import com.datastax.driver.mapping.annotations.Accessor;
 import com.datastax.driver.mapping.annotations.Param;
 import com.datastax.driver.mapping.annotations.Query;
@@ -95,6 +96,8 @@ public class ElementRepositoryImpl implements ElementRepository {
             return Optional.empty();
         }
 
+        ElementWriteWindow.awaitRow(elementContext.getSpace(), elementContext.getItemId().toString(),
+                elementContext.getVersionId().toString(), element.getId().toString(), revisionId);
         Row row = getElementAccessor(context).get(elementContext.getSpace(), elementContext.getItemId().toString(),
                 elementContext.getVersionId().toString(), element.getId().toString(), revisionId).one();
 
@@ -109,6 +112,8 @@ public class ElementRepositoryImpl implements ElementRepository {
             return Optional.empty();
         }
 
+        ElementWriteWindow.awaitRow(elementContext.getSpace(), elementContext.getItemId().toString(),
+                elementContext.getVersionId().toString(), element.getId().toString(), revisionId);
         Row row = getElementAccessor(context)
                           .getDescriptor(elementContext.getSpace(), elementContext.getItemId().toString(),
                                   elementContext.getVersionId().toString(), element.getId().toString(), revisionId)
@@ -130,6 +135,8 @@ public class ElementRepositoryImpl implements ElementRepository {
             return Optional.empty();
         }
 
+        ElementWriteWindow.awaitRow(elementContext.getSpace(), elementContext.getItemId().toString(),
+                elementContext.getVersionId().getValue(), element.getId().toString(), revisionId);
         Row row = getElementAccessor(context).getHash(elementContext.getSpace(), elementContext.getItemId().toString(),
                 elementContext.getVersionId().getValue(), element.getId().toString(), revisionId).one();
 
@@ -188,33 +195,60 @@ public class ElementRepositoryImpl implements ElementRepository {
 
     private void createElementRow(SessionContext context, ElementEntityContext elementContext, ElementEntity element) {
         Set<String> subElementIds = element.getSubElementIds().stream().map(Id::toString).collect(Collectors.toSet());
+        String space = elementContext.getSpace();
+        String itemId = elementContext.getItemId().toString();
+        String versionId = elementContext.getVersionId().getValue();
+        String elementId = element.getId().toString();
+        String revisionId = elementContext.getRevisionId().getValue();
+        String parentId = element.getParentId() == null ? null : element.getParentId().toString();
+        String namespace = element.getNamespace() == null ? null : element.getNamespace().toString();
+        String info = JsonUtil.object2Json(element.getInfo());
+        String relations = JsonUtil.object2Json(element.getRelations());
 
-        getElementAccessor(context).create(elementContext.getSpace(), elementContext.getItemId().toString(),
-                elementContext.getVersionId().getValue(), element.getId().toString(),
-                elementContext.getRevisionId().getValue(),
-                element.getParentId() == null ? null : element.getParentId().toString(),
-                element.getNamespace() == null ? null : element.getNamespace().toString(),
-                JsonUtil.object2Json(element.getInfo()), JsonUtil.object2Json(element.getRelations()),
-                element.getData(), element.getSearchableData(), element.getVisualization(), subElementIds,
-                element.getElementHash().getValue());
+        if (!ElementWriteWindow.submit(context, space, itemId, versionId, elementId, revisionId,
+                () -> getElementAccessor(context)
+                              .createStatement(space, itemId, versionId, elementId, revisionId, parentId, namespace,
+                                      info, relations, element.getData(), element.getSearchableData(),
+                                      element.getVisualization(), subElementIds,
+                                      element.getElementHash().getValue()))) {
+            getElementAccessor(context).create(space, itemId, versionId, elementId, revisionId, parentId, namespace,
+                    info, relations, element.getData(), element.getSearchableData(), element.getVisualization(),
+                    subElementIds, element.getElementHash().getValue());
+        }
     }
 
     private void updateElement(SessionContext context, ElementEntityContext elementContext, ElementEntity element) {
+        String info = JsonUtil.object2Json(element.getInfo());
+        String relations = JsonUtil.object2Json(element.getRelations());
+        String space = elementContext.getSpace();
+        String itemId = elementContext.getItemId().toString();
+        String versionId = elementContext.getVersionId().toString();
+        String revisionId = elementContext.getRevisionId().getValue();
         if (element.getParentId() == null) {
-            getElementAccessor(context)
-                    .update(JsonUtil.object2Json(element.getInfo()), JsonUtil.object2Json(element.getRelations()),
-                            element.getData(), element.getSearchableData(), element.getVisualization(),
-                            element.getElementHash().getValue(), elementContext.getSpace(),
-                            elementContext.getItemId().toString(), elementContext.getVersionId().toString(),
-                            element.getId().toString(), elementContext.getRevisionId().getValue());
+            String elementId = element.getId().toString();
+            if (!ElementWriteWindow.submit(context, space, itemId, versionId, elementId, revisionId,
+                    () -> getElementAccessor(context)
+                                  .updateStatement(info, relations, element.getData(), element.getSearchableData(),
+                                          element.getVisualization(), element.getElementHash().getValue(), space,
+                                          itemId, versionId, elementId, revisionId))) {
+                getElementAccessor(context)
+                        .update(info, relations, element.getData(), element.getSearchableData(),
+                                element.getVisualization(), element.getElementHash().getValue(), space, itemId,
+                                versionId, elementId, revisionId);
+            }
         } else {
-            getElementAccessor(context)
-                    .update(JsonUtil.object2Json(element.getInfo()), JsonUtil.object2Json(element.getRelations()),
-                            element.getData(), element.getSearchableData(), element.getVisualization(),
-                            element.getElementHash().getValue(), element.getParentId().getValue(),
-                            elementContext.getSpace(), elementContext.getItemId().toString(),
-                            elementContext.getVersionId().toString(), element.getId().getValue(),
-                            elementContext.getRevisionId().getValue());
+            String elementId = element.getId().getValue();
+            if (!ElementWriteWindow.submit(context, space, itemId, versionId, elementId, revisionId,
+                    () -> getElementAccessor(context)
+                                  .updateStatement(info, relations, element.getData(), element.getSearchableData(),
+                                          element.getVisualization(), element.getElementHash().getValue(),
+                                          element.getParentId().getValue(), space, itemId, versionId, elementId,
+                                          revisionId))) {
+                getElementAccessor(context)
+                        .update(info, relations, element.getData(), element.getSearchableData(),
+                                element.getVisualization(), element.getElementHash().getValue(),
+                                element.getParentId().getValue(), space, itemId, versionId, elementId, revisionId);
+            }
         }
 
         Map<String, String> elementIds = new TreeMap<>();
@@ -229,11 +263,16 @@ public class ElementRepositoryImpl implements ElementRepository {
     }
 
     private void deleteElement(SessionContext context, ElementEntityContext elementContext, ElementEntity element) {
+        String space = elementContext.getSpace();
+        String itemId = elementContext.getItemId().toString();
+        String versionId = elementContext.getVersionId().toString();
+        String elementId = element.getId().toString();
+        String revisionId = elementContext.getRevisionId().getValue();
 
-
-        getElementAccessor(context).delete(elementContext.getSpace(), elementContext.getItemId().toString(),
-                elementContext.getVersionId().toString(), element.getId().toString(),
-                elementContext.getRevisionId().getValue());
+        if (!ElementWriteWindow.submit(context, space, itemId, versionId, elementId, revisionId,
+                () -> getElementAccessor(context).deleteStatement(space, itemId, versionId, elementId, revisionId))) {
+            getElementAccessor(context).delete(space, itemId, versionId, elementId, revisionId);
+        }
 
         if (!VersionElementsWriteBuffer.removeElements(elementContext.getSpace(),
                 elementContext.getItemId().toString(), elementContext.getVersionId().toString(),
@@ -252,11 +291,19 @@ public class ElementRepositoryImpl implements ElementRepository {
             return;
         }
 
+        Set<String> subElementIds = Collections.singleton(element.getId().toString());
+        String space = elementContext.getSpace();
+        String itemId = elementContext.getItemId().toString();
+        String versionId = elementContext.getVersionId().toString();
+        String parentId = element.getParentId().toString();
+        String revisionId = elementContext.getRevisionId().getValue();
 
-        getElementAccessor(context)
-                .addSubElements(Collections.singleton(element.getId().toString()), elementContext.getSpace(),
-                        elementContext.getItemId().toString(), elementContext.getVersionId().toString(),
-                        element.getParentId().toString(), elementContext.getRevisionId().getValue());
+        if (!ElementWriteWindow.submit(context, space, itemId, versionId, parentId, revisionId,
+                () -> getElementAccessor(context)
+                              .addSubElementsStatement(subElementIds, space, itemId, versionId, parentId,
+                                      revisionId))) {
+            getElementAccessor(context).addSubElements(subElementIds, space, itemId, versionId, parentId, revisionId);
+        }
 
         Map<String, String> elementIds = new TreeMap<>();
         elementIds.put(element.getParentId().toString(), elementContext.getRevisionId().getValue());
@@ -280,10 +327,20 @@ public class ElementRepositoryImpl implements ElementRepository {
         if (!parentElement.isPresent()) {
             return;
         }
-        getElementAccessor(context)
-                .removeSubElements(Collections.singleton(element.getId().toString()), elementContext.getSpace(),
-                        elementContext.getItemId().toString(), elementContext.getVersionId().toString(),
-                        element.getParentId().toString(), elementContext.getRevisionId().getValue());
+        Set<String> subElementIds = Collections.singleton(element.getId().toString());
+        String space = elementContext.getSpace();
+        String itemId = elementContext.getItemId().toString();
+        String versionId = elementContext.getVersionId().toString();
+        String parentId = element.getParentId().toString();
+        String revisionId = elementContext.getRevisionId().getValue();
+
+        if (!ElementWriteWindow.submit(context, space, itemId, versionId, parentId, revisionId,
+                () -> getElementAccessor(context)
+                              .removeSubElementsStatement(subElementIds, space, itemId, versionId, parentId,
+                                      revisionId))) {
+            getElementAccessor(context)
+                    .removeSubElements(subElementIds, space, itemId, versionId, parentId, revisionId);
+        }
 
         if (!VersionElementsWriteBuffer.removeElements(elementContext.getSpace(),
                 elementContext.getItemId().getValue(), elementContext.getVersionId().getValue(),
@@ -384,11 +441,28 @@ public class ElementRepositoryImpl implements ElementRepository {
     @Accessor
     interface ElementAccessor {
 
-        @Query("UPDATE element SET parent_id=:parentId, namespace=:ns, info=:info, relations=:rels, "
-                       + "data=:data, searchable_data=:searchableData, visualization=:visualization, "
-                       + "sub_element_ids=sub_element_ids+:subs , element_hash=:elementHash "
-                       + " WHERE space=:space AND item_id=:item AND version_id=:ver AND element_id=:id AND "
-                       + "revision_id=:rev ")
+        String CREATE = "UPDATE element SET parent_id=:parentId, namespace=:ns, info=:info, relations=:rels, "
+                                + "data=:data, searchable_data=:searchableData, visualization=:visualization, "
+                                + "sub_element_ids=sub_element_ids+:subs , element_hash=:elementHash "
+                                + " WHERE space=:space AND item_id=:item AND version_id=:ver AND element_id=:id AND "
+                                + "revision_id=:rev ";
+        String UPDATE_WITH_PARENT = "UPDATE element SET info=?, relations=?, data=?, searchable_data=?, "
+                                            + "visualization=? ,element_hash=? , parent_id=? "
+                                            + " WHERE space=? AND item_id=? AND version_id=? AND element_id=? AND "
+                                            + "revision_id=?  ";
+        String UPDATE = "UPDATE element SET info=?, relations=?, data=?, searchable_data=?, visualization=? ,"
+                                + "element_hash=? "
+                                + " WHERE space=? AND item_id=? AND version_id=? AND element_id=? AND revision_id=?  ";
+        String DELETE =
+                "DELETE FROM element WHERE space=? AND item_id=? AND version_id=? AND element_id=? AND revision_id=? ";
+        String ADD_SUB_ELEMENTS = "UPDATE element SET sub_element_ids=sub_element_ids+? "
+                                          + " WHERE space=? AND item_id=? AND version_id=? AND element_id=? AND "
+                                          + "revision_id=?  ";
+        String REMOVE_SUB_ELEMENTS = "UPDATE element SET sub_element_ids=sub_element_ids-? "
+                                             + " WHERE space=? AND item_id=? AND version_id=? AND element_id=? AND "
+                                             + "revision_id=? ";
+
+        @Query(CREATE)
         void create(@Param("space") String space, @Param("item") String itemId, @Param("ver") String versionId,
                 @Param("id") String elementId, @Param("rev") String revisionId,
                 @Param("parentId") String parentElementId, @Param("ns") String namespace, @Param("info") String info,
@@ -396,22 +470,38 @@ public class ElementRepositoryImpl implements ElementRepository {
                 @Param("searchableData") ByteBuffer searchableData, @Param("visualization") ByteBuffer visualization,
                 @Param("subs") Set<String> subElementIds, @Param("elementHash") String elementHash);
 
+        @Query(CREATE)
+        Statement createStatement(@Param("space") String space, @Param("item") String itemId,
+                @Param("ver") String versionId, @Param("id") String elementId, @Param("rev") String revisionId,
+                @Param("parentId") String parentElementId, @Param("ns") String namespace, @Param("info") String info,
+                @Param("rels") String relations, @Param("data") ByteBuffer data,
+                @Param("searchableData") ByteBuffer searchableData, @Param("visualization") ByteBuffer visualization,
+                @Param("subs") Set<String> subElementIds, @Param("elementHash") String elementHash);
 
-        @Query("UPDATE element SET info=?, relations=?, data=?, searchable_data=?, visualization=? ,"
-                       + "element_hash=? , parent_id=? "
-                       + " WHERE space=? AND item_id=? AND version_id=? AND element_id=? AND revision_id=?  ")
+        @Query(UPDATE_WITH_PARENT)
         void update(String info, String relations, ByteBuffer data, ByteBuffer searchableData, ByteBuffer visualization,
                 String elementHash, String parentId, String space, String itemId, String versionId, String elementId,
                 String revisionId);
 
-        @Query("UPDATE element SET info=?, relations=?, data=?, searchable_data=?, visualization=? ,"
-                       + "element_hash=? "
-                       + " WHERE space=? AND item_id=? AND version_id=? AND element_id=? AND revision_id=?  ")
+        @Query(UPDATE_WITH_PARENT)
+        Statement updateStatement(String info, String relations, ByteBuffer data, ByteBuffer searchableData,
+                ByteBuffer visualization, String elementHash, String parentId, String space, String itemId,
+                String versionId, String elementId, String revisionId);
+
+        @Query(UPDATE)
         void update(String info, String relations, ByteBuffer data, ByteBuffer searchableData, ByteBuffer visualization,
                 String elementHash, String space, String itemId, String versionId, String elementId, String revisionId);
 
-        @Query("DELETE FROM element WHERE space=? AND item_id=? AND version_id=? AND element_id=? AND revision_id=? ")
+        @Query(UPDATE)
+        Statement updateStatement(String info, String relations, ByteBuffer data, ByteBuffer searchableData,
+                ByteBuffer visualization, String elementHash, String space, String itemId, String versionId,
+                String elementId, String revisionId);
+
+        @Query(DELETE)
         void delete(String space, String itemId, String versionId, String elementId, String revisionId);
+
+        @Query(DELETE)
+        Statement deleteStatement(String space, String itemId, String versionId, String elementId, String revisionId);
 
         @Query("SELECT parent_id, namespace, info, relations, data, searchable_data, visualization, "
                        + "sub_element_ids,element_hash FROM element "
@@ -422,14 +512,20 @@ public class ElementRepositoryImpl implements ElementRepository {
                        + "WHERE space=? AND item_id=? AND version_id=? AND element_id=? AND revision_id=? ")
         ResultSet getDescriptor(String space, String itemId, String versionId, String elementId, String revisionId);
 
-        @Query("UPDATE element SET sub_element_ids=sub_element_ids+? "
-                       + " WHERE space=? AND item_id=? AND version_id=? AND element_id=? AND revision_id=?  ")
+        @Query(ADD_SUB_ELEMENTS)
         void addSubElements(Set<String> subElementIds, String space, String itemId, String versionId, String elementId,
                 String revisionId);
 
-        @Query("UPDATE element SET sub_element_ids=sub_element_ids-? "
-                       + " WHERE space=? AND item_id=? AND version_id=? AND element_id=? AND revision_id=? ")
+        @Query(ADD_SUB_ELEMENTS)
+        Statement addSubElementsStatement(Set<String> subElementIds, String space, String itemId, String versionId,
+                String elementId, String revisionId);
+
+        @Query(REMOVE_SUB_ELEMENTS)
         void removeSubElements(Set<String> subElementIds, String space, String itemId, String versionId,
+                String elementId, String revisionId);
+
+        @Query(REMOVE_SUB_ELEMENTS)
+        Statement removeSubElementsStatement(Set<String> subElementIds, String space, String itemId, String versionId,
                 String elementId, String revisionId);
 
         @Query("SELECT element_hash FROM element "

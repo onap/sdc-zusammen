@@ -24,7 +24,9 @@ import com.amdocs.zusammen.commons.db.api.cassandra.types.CassandraContext;
 import com.amdocs.zusammen.utils.facade.impl.AbstractFactoryBase;
 import com.datastax.driver.core.CodecRegistry;
 import com.datastax.driver.core.Configuration;
+import com.datastax.driver.core.ResultSetFuture;
 import com.datastax.driver.core.Session;
+import com.datastax.driver.core.Statement;
 import com.datastax.driver.mapping.MappingManager;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -38,6 +40,10 @@ import org.mockito.Mockito;
  * stubs registered here, the {@link Session} the code executes statements on is a mock whose calls
  * can be captured, and the {@link CassandraContext} they derive from the session context is
  * recorded for assertion.
+ *
+ * <p>Asynchronous sends answer with a future that is already done - including for the null statement
+ * an unstubbed accessor mock hands over - since a caller that waits for the outcome would trip over
+ * a null future. A test that cares when a write lands stubs {@code executeAsync} itself.
  */
 class CassandraAccessorSeam {
 
@@ -63,6 +69,8 @@ class CassandraAccessorSeam {
         when(configuration.getCodecRegistry()).thenReturn(CODEC_REGISTRY);
 
         session = Mockito.mock(Session.class);
+        when(session.executeAsync(Mockito.nullable(Statement.class)))
+                .thenAnswer(invocation -> Mockito.mock(ResultSetFuture.class));
 
         mappingManager = Mockito.mock(MappingManager.class);
         when(mappingManager.getSession()).thenReturn(session);
