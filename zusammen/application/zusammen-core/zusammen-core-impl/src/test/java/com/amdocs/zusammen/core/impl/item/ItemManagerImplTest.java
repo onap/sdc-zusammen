@@ -19,6 +19,7 @@ package com.amdocs.zusammen.core.impl.item;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -26,13 +27,17 @@ import com.amdocs.zusammen.adaptor.outbound.api.CollaborationAdaptor;
 import com.amdocs.zusammen.adaptor.outbound.api.item.ItemStateAdaptor;
 import com.amdocs.zusammen.adaptor.outbound.impl.CollaborationAdaptorImpl;
 import com.amdocs.zusammen.adaptor.outbound.impl.item.ItemStateAdaptorImpl;
+import com.amdocs.zusammen.core.impl.Messages;
 import com.amdocs.zusammen.core.impl.TestUtils;
 import com.amdocs.zusammen.datatypes.Id;
 import com.amdocs.zusammen.datatypes.SessionContext;
 import com.amdocs.zusammen.datatypes.UserInfo;
 import com.amdocs.zusammen.datatypes.item.Info;
 import com.amdocs.zusammen.datatypes.item.Item;
+import com.amdocs.zusammen.datatypes.response.ErrorCode;
+import com.amdocs.zusammen.datatypes.response.Module;
 import com.amdocs.zusammen.datatypes.response.Response;
+import com.amdocs.zusammen.datatypes.response.ReturnCode;
 import com.amdocs.zusammen.datatypes.response.ZusammenException;
 import java.util.Arrays;
 import java.util.Collection;
@@ -205,6 +210,210 @@ public class ItemManagerImplTest {
         doReturn(new Response<>(Void.TYPE)).when(stateAdaptorMock).deleteItem(context, itemId);
         doReturn(new Response<>(Void.TYPE)).when(collaborationAdaptorMock).deleteItem(context, itemId);
         itemManagerImpl.delete(context, itemId);
+    }
+
+    @Test
+    public void testListFailurePropagates() {
+        ReturnCode cause = stateStoreFailure();
+        doReturn(new Response<Collection<Item>>(cause)).when(stateAdaptorMock).listItems(context);
+
+        TestUtils.assertWrappedFailure(TestUtils.captureFailure(() -> itemManagerImpl.list(context)),
+                ErrorCode.ZU_ITEM_LIST, cause);
+    }
+
+    @Test
+    public void testIsExistFailurePropagates() {
+        Id itemId = new Id();
+        ReturnCode cause = stateStoreFailure();
+        doReturn(new Response<Boolean>(cause)).when(stateAdaptorMock).isItemExist(context, itemId);
+
+        TestUtils.assertWrappedFailure(
+                TestUtils.captureFailure(() -> itemManagerImpl.isExist(context, itemId)),
+                ErrorCode.ZU_ITEM_IS_EXIST, cause);
+    }
+
+    @Test
+    public void testGetFailurePropagates() {
+        Id itemId = new Id();
+        ReturnCode cause = stateStoreFailure();
+        doReturn(new Response<Item>(cause)).when(stateAdaptorMock).getItem(context, itemId);
+
+        TestUtils.assertWrappedFailure(
+                TestUtils.captureFailure(() -> itemManagerImpl.get(context, itemId)),
+                ErrorCode.ZU_ITEM_GET, cause);
+    }
+
+    @Test
+    public void testCreateWithNullIdIsRejectedBeforeAnyStoreIsTouched() {
+        Info info = TestUtils.createInfo("item1");
+
+        ReturnCode returnCode =
+                TestUtils.captureFailure(() -> itemManagerImpl.create(context, null, info));
+
+        TestUtils.assertErrorCode(returnCode, Module.ZDB, ErrorCode.ZU_ITEM_CREATE);
+        Assert.assertEquals(returnCode.getMessage(), Messages.ITEM_ID_TO_CREATE_CANNOT_BE_NULL);
+        verify(collaborationAdaptorMock, never()).createItem(any(), any(), any());
+        verify(stateAdaptorMock, never()).createItem(any(), any(), any(), any());
+    }
+
+    @Test
+    public void testCreateWithAnIdCarryingNoValueIsRejected() {
+        Info info = TestUtils.createInfo("item1");
+
+        ReturnCode returnCode = TestUtils
+                .captureFailure(() -> itemManagerImpl.create(context, new Id(null), info));
+
+        TestUtils.assertErrorCode(returnCode, Module.ZDB, ErrorCode.ZU_ITEM_CREATE);
+        Assert.assertEquals(returnCode.getMessage(), Messages.ITEM_ID_TO_CREATE_CANNOT_BE_NULL);
+        verify(collaborationAdaptorMock, never()).createItem(any(), any(), any());
+    }
+
+    @Test
+    public void testCreateWithExistingIdIsRejected() {
+        Id itemId = new Id("id1");
+        doReturn(new Response<>(true)).when(stateAdaptorMock).isItemExist(context, itemId);
+        Info info = TestUtils.createInfo("item1");
+
+        ReturnCode returnCode =
+                TestUtils.captureFailure(() -> itemManagerImpl.create(context, itemId, info));
+
+        TestUtils.assertErrorCode(returnCode, Module.ZDB, ErrorCode.ZU_ITEM_CREATE);
+        Assert.assertEquals(returnCode.getMessage(),
+                String.format(Messages.ITEM_ֹID_ALREADY_EXIST, itemId));
+        verify(collaborationAdaptorMock, never()).createItem(any(), any(), any());
+    }
+
+    @Test
+    public void testCreateFailsWhenTheCollaborationStoreRejectsItAndTheStateStoreIsNotTouched() {
+        Info info = TestUtils.createInfo("item1");
+        ReturnCode cause = collaborationStoreFailure();
+        doReturn(new Response<Void>(cause)).when(collaborationAdaptorMock)
+                .createItem(any(), any(), any());
+
+        TestUtils.assertWrappedFailure(
+                TestUtils.captureFailure(() -> itemManagerImpl.create(context, info)),
+                ErrorCode.ZU_ITEM_CREATE, cause);
+
+        verify(stateAdaptorMock, never()).createItem(any(), any(), any(), any());
+    }
+
+    @Test
+    public void testCreateFailsWhenTheStateStoreRejectsIt() {
+        Info info = TestUtils.createInfo("item1");
+        ReturnCode cause = stateStoreFailure();
+        doReturn(new Response<Void>(cause)).when(stateAdaptorMock)
+                .createItem(any(), any(), any(), any());
+
+        TestUtils.assertWrappedFailure(
+                TestUtils.captureFailure(() -> itemManagerImpl.create(context, info)),
+                ErrorCode.ZU_ITEM_CREATE, cause);
+    }
+
+    @Test
+    public void testUpdateOfNonExistingItemReportsItemNotExist() {
+        Id itemId = new Id();
+        doReturn(new Response<>(false)).when(stateAdaptorMock).isItemExist(context, itemId);
+
+        ReturnCode returnCode = TestUtils.captureFailure(
+                () -> itemManagerImpl.update(context, itemId, TestUtils.createInfo("item1")));
+
+        TestUtils.assertErrorCode(returnCode, Module.ZDB, ErrorCode.ZU_ITEM_DOES_NOT_EXIST);
+        Assert.assertEquals(returnCode.getMessage(),
+                String.format(Messages.ITEM_NOT_EXIST, itemId));
+    }
+
+    @Test
+    public void testUpdateFailsWhenTheCollaborationStoreRejectsItAndTheStateStoreIsNotTouched() {
+        Id itemId = new Id();
+        Info info = TestUtils.createInfo("item1");
+        doReturn(new Response<>(true)).when(stateAdaptorMock).isItemExist(context, itemId);
+        ReturnCode cause = collaborationStoreFailure();
+        doReturn(new Response<Void>(cause)).when(collaborationAdaptorMock)
+                .updateItem(context, itemId, info);
+
+        TestUtils.assertWrappedFailure(
+                TestUtils.captureFailure(() -> itemManagerImpl.update(context, itemId, info)),
+                ErrorCode.ZU_ITEM_UPDATE, cause);
+
+        verify(stateAdaptorMock, never()).updateItem(any(), any(), any(), any());
+    }
+
+    @Test
+    public void testUpdateFailsWhenTheStateStoreRejectsIt() {
+        Id itemId = new Id();
+        Info info = TestUtils.createInfo("item1");
+        doReturn(new Response<>(true)).when(stateAdaptorMock).isItemExist(context, itemId);
+        doReturn(new Response<>(Void.TYPE)).when(collaborationAdaptorMock)
+                .updateItem(context, itemId, info);
+        ReturnCode cause = stateStoreFailure();
+        doReturn(new Response<Void>(cause)).when(stateAdaptorMock)
+                .updateItem(eq(context), eq(itemId), eq(info), any(Date.class));
+
+        TestUtils.assertWrappedFailure(
+                TestUtils.captureFailure(() -> itemManagerImpl.update(context, itemId, info)),
+                ErrorCode.ZU_ITEM_UPDATE, cause);
+    }
+
+    @Test
+    public void testDeleteOfNonExistingItemReportsItemNotExist() {
+        Id itemId = new Id();
+        doReturn(new Response<>(false)).when(stateAdaptorMock).isItemExist(context, itemId);
+
+        ReturnCode returnCode =
+                TestUtils.captureFailure(() -> itemManagerImpl.delete(context, itemId));
+
+        TestUtils.assertErrorCode(returnCode, Module.ZDB, ErrorCode.ZU_ITEM_DOES_NOT_EXIST);
+        Assert.assertEquals(returnCode.getMessage(),
+                String.format(Messages.ITEM_NOT_EXIST, itemId));
+    }
+
+    @Test
+    public void testDeleteFailsWhenTheCollaborationStoreRejectsItAndTheStateStoreIsNotTouched() {
+        Id itemId = new Id();
+        doReturn(new Response<>(true)).when(stateAdaptorMock).isItemExist(context, itemId);
+        ReturnCode cause = collaborationStoreFailure();
+        doReturn(new Response<Void>(cause)).when(collaborationAdaptorMock)
+                .deleteItem(context, itemId);
+
+        TestUtils.assertWrappedFailure(
+                TestUtils.captureFailure(() -> itemManagerImpl.delete(context, itemId)),
+                ErrorCode.ZU_ITEM_DELETE, cause);
+
+        verify(stateAdaptorMock, never()).deleteItem(any(), any());
+    }
+
+    @Test
+    public void testDeleteFailsWhenTheStateStoreRejectsIt() {
+        Id itemId = new Id();
+        doReturn(new Response<>(true)).when(stateAdaptorMock).isItemExist(context, itemId);
+        doReturn(new Response<>(Void.TYPE)).when(collaborationAdaptorMock)
+                .deleteItem(context, itemId);
+        ReturnCode cause = stateStoreFailure();
+        doReturn(new Response<Void>(cause)).when(stateAdaptorMock).deleteItem(context, itemId);
+
+        TestUtils.assertWrappedFailure(
+                TestUtils.captureFailure(() -> itemManagerImpl.delete(context, itemId)),
+                ErrorCode.ZU_ITEM_DELETE, cause);
+    }
+
+    @Test
+    public void testUpdateModificationTimeDelegatesToTheStateStore() {
+        Id itemId = new Id();
+        Date modificationTime = new Date();
+
+        itemManagerImpl.updateModificationTime(context, itemId, modificationTime);
+
+        verify(stateAdaptorMock).updateItemModificationTime(context, itemId, modificationTime);
+        verify(collaborationAdaptorMock, never()).updateItem(any(), any(), any());
+    }
+
+    private ReturnCode stateStoreFailure() {
+        return new ReturnCode(ErrorCode.ST_ITEM_GET, Module.ZMDP, "state store down", null);
+    }
+
+    private ReturnCode collaborationStoreFailure() {
+        return new ReturnCode(ErrorCode.CL_ITEM_CREATE, Module.ZCSP, "collaboration store down",
+                null);
     }
 
     private Item createItem(Id id, String name) {

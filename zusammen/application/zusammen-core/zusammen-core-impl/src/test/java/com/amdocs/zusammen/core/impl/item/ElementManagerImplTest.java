@@ -19,9 +19,15 @@ package com.amdocs.zusammen.core.impl.item;
 import com.amdocs.zusammen.adaptor.outbound.api.CollaborationAdaptor;
 import com.amdocs.zusammen.adaptor.outbound.api.SearchIndexAdaptor;
 import com.amdocs.zusammen.adaptor.outbound.api.item.ElementStateAdaptor;
+import com.amdocs.zusammen.core.api.item.ItemManager;
 import com.amdocs.zusammen.core.api.item.ItemVersionManager;
 import com.amdocs.zusammen.core.api.types.CoreElement;
+import com.amdocs.zusammen.core.api.types.CoreElementConflict;
 import com.amdocs.zusammen.core.api.types.CoreElementInfo;
+import com.amdocs.zusammen.core.api.types.CoreMergeChange;
+import com.amdocs.zusammen.core.api.types.CoreMergeConflict;
+import com.amdocs.zusammen.core.api.types.CoreMergeResult;
+import com.amdocs.zusammen.core.impl.Messages;
 import com.amdocs.zusammen.core.impl.TestUtils;
 import com.amdocs.zusammen.datatypes.Id;
 import com.amdocs.zusammen.datatypes.Namespace;
@@ -31,8 +37,13 @@ import com.amdocs.zusammen.datatypes.UserInfo;
 import com.amdocs.zusammen.datatypes.item.Action;
 import com.amdocs.zusammen.datatypes.item.ElementContext;
 import com.amdocs.zusammen.datatypes.item.Info;
+import com.amdocs.zusammen.datatypes.item.ItemVersionChange;
 import com.amdocs.zusammen.datatypes.item.Relation;
+import com.amdocs.zusammen.datatypes.item.Resolution;
+import com.amdocs.zusammen.datatypes.response.ErrorCode;
+import com.amdocs.zusammen.datatypes.response.Module;
 import com.amdocs.zusammen.datatypes.response.Response;
+import com.amdocs.zusammen.datatypes.response.ReturnCode;
 import com.amdocs.zusammen.datatypes.searchindex.SearchCriteria;
 import com.amdocs.zusammen.datatypes.searchindex.SearchResult;
 import org.mockito.InjectMocks;
@@ -47,12 +58,15 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -68,6 +82,8 @@ public class ElementManagerImplTest {
   @Mock
   private ItemVersionManager versionManagerMock;
   @Mock
+  private ItemManager itemManagerMock;
+  @Mock
   private ElementHierarchyTraverser traverserMock;
   @Mock(name = "collaborativeStoreVisitor")
   private ElementVisitor collaborativeStoreVisitorMock;
@@ -82,6 +98,7 @@ public class ElementManagerImplTest {
     MockitoAnnotations.initMocks(this);
 
     when(elementManager.getItemVersionManager(any())).thenReturn(versionManagerMock);
+    when(elementManager.getItemManager(any())).thenReturn(itemManagerMock);
     when(elementManager.getStateAdaptor(any())).thenReturn(stateAdaptorMock);
     when(elementManager.getCollaborationAdaptor(any())).thenReturn(collaborationAdaptorMock);
     when(elementManager.getSearchIndexAdaptor(any())).thenReturn(searchIndexAdaptorMock);
@@ -329,6 +346,379 @@ public class ElementManagerImplTest {
     coreElementInfo.setRelations(relations);
     coreElementInfo.setSubElements(Arrays.asList(subElements));
     return coreElementInfo;
+  }
+
+  @Test
+  public void testListByRevisionOfAnElementWithoutNamespaceIsEmpty() {
+    SessionContext context = TestUtils.createSessionContext(USER, "test");
+    Id itemId = new Id();
+    Id elementId = new Id();
+    ElementContext elementContext = new ElementContext(itemId, new Id(), new Id("revision"));
+
+    Namespace noNamespace = null;
+    doReturn(new Response<>(noNamespace))
+        .when(stateAdaptorMock).getNamespace(context, itemId, elementId);
+
+    Collection<CoreElementInfo> elementInfos =
+        elementManager.list(context, elementContext, elementId);
+
+    Assert.assertTrue(elementInfos.isEmpty());
+    verify(collaborationAdaptorMock, never()).listElements(any(), any(), any(), any());
+  }
+
+  @Test
+  public void testListFailurePropagates() {
+    SessionContext context = TestUtils.createSessionContext(USER, "test");
+    ElementContext elementContext = new ElementContext(new Id(), new Id());
+    ReturnCode cause = stateStoreFailure();
+    doReturn(new Response<Collection<CoreElementInfo>>(cause))
+        .when(stateAdaptorMock).list(context, elementContext, null);
+
+    TestUtils.assertWrappedFailure(
+        TestUtils.captureFailure(() -> elementManager.list(context, elementContext, null)),
+        ErrorCode.ZU_ELEMENT_LIST, cause);
+  }
+
+  @Test
+  public void testGetInfoByRevisionOfAnElementWithoutNamespaceIsNull() {
+    SessionContext context = TestUtils.createSessionContext(USER, "test");
+    Id itemId = new Id();
+    Id elementId = new Id();
+    ElementContext elementContext = new ElementContext(itemId, new Id(), new Id("revision"));
+
+    Namespace noNamespace = null;
+    doReturn(new Response<>(noNamespace))
+        .when(stateAdaptorMock).getNamespace(context, itemId, elementId);
+
+    Assert.assertNull(elementManager.getInfo(context, elementContext, elementId));
+    verify(collaborationAdaptorMock, never()).getElement(any(), any(), any(), any());
+  }
+
+  @Test
+  public void testGetInfoByRevisionOfAnElementTheStoreDoesNotHaveIsNull() {
+    SessionContext context = TestUtils.createSessionContext(USER, "test");
+    Id itemId = new Id();
+    Id elementId = new Id();
+    ElementContext elementContext = new ElementContext(itemId, new Id(), new Id("revision"));
+
+    doReturn(new Response<>(Namespace.ROOT_NAMESPACE))
+        .when(stateAdaptorMock).getNamespace(context, itemId, elementId);
+    CoreElement noElement = null;
+    doReturn(new Response<>(noElement)).when(collaborationAdaptorMock)
+        .getElement(context, elementContext, Namespace.ROOT_NAMESPACE, elementId);
+
+    Assert.assertNull(elementManager.getInfo(context, elementContext, elementId));
+  }
+
+  @Test
+  public void testGetInfoFailurePropagates() {
+    SessionContext context = TestUtils.createSessionContext(USER, "test");
+    ElementContext elementContext = new ElementContext(new Id(), new Id());
+    Id elementId = new Id();
+    ReturnCode cause = stateStoreFailure();
+    doReturn(new Response<CoreElementInfo>(cause))
+        .when(stateAdaptorMock).get(context, elementContext, elementId);
+
+    TestUtils.assertWrappedFailure(
+        TestUtils.captureFailure(() -> elementManager.getInfo(context, elementContext, elementId)),
+        ErrorCode.ZU_ELEMENT_GET_INFO, cause);
+  }
+
+  @Test
+  public void testGetOfAnElementWithoutNamespaceIsNull() {
+    SessionContext context = TestUtils.createSessionContext(USER, "test");
+    Id itemId = new Id();
+    Id elementId = new Id();
+    ElementContext elementContext = new ElementContext(itemId, new Id());
+
+    Namespace noNamespace = null;
+    doReturn(new Response<>(noNamespace))
+        .when(stateAdaptorMock).getNamespace(context, itemId, elementId);
+
+    Assert.assertNull(elementManager.get(context, elementContext, elementId));
+    verify(collaborationAdaptorMock, never()).getElement(any(), any(), any(), any());
+  }
+
+  @Test
+  public void testGetFailurePropagates() {
+    SessionContext context = TestUtils.createSessionContext(USER, "test");
+    Id itemId = new Id();
+    Id elementId = new Id();
+    ElementContext elementContext = new ElementContext(itemId, new Id());
+    doReturn(new Response<>(Namespace.ROOT_NAMESPACE))
+        .when(stateAdaptorMock).getNamespace(context, itemId, elementId);
+    ReturnCode cause = collaborationStoreFailure();
+    doReturn(new Response<CoreElement>(cause)).when(collaborationAdaptorMock)
+        .getElement(context, elementContext, Namespace.ROOT_NAMESPACE, elementId);
+
+    TestUtils.assertWrappedFailure(
+        TestUtils.captureFailure(() -> elementManager.get(context, elementContext, elementId)),
+        ErrorCode.ZU_ELEMENT_GET, cause);
+  }
+
+  @Test
+  public void testGetConflict() {
+    SessionContext context = TestUtils.createSessionContext(USER, "test");
+    Id itemId = new Id();
+    Id elementId = new Id();
+    ElementContext elementContext = new ElementContext(itemId, new Id());
+    Namespace namespace = new Namespace(Namespace.ROOT_NAMESPACE, new Id());
+    doReturn(new Response<>(namespace))
+        .when(stateAdaptorMock).getNamespace(context, itemId, elementId);
+
+    CoreElementConflict retrievedConflict = new CoreElementConflict();
+    retrievedConflict.setLocalElement(new CoreElement());
+    retrievedConflict.setRemoteElement(new CoreElement());
+    doReturn(new Response<>(retrievedConflict)).when(collaborationAdaptorMock)
+        .getElementConflict(context, elementContext, namespace, elementId);
+
+    Assert.assertSame(elementManager.getConflict(context, elementContext, elementId),
+        retrievedConflict);
+  }
+
+  @Test
+  public void testGetConflictOfAnElementWithoutNamespaceIsNull() {
+    SessionContext context = TestUtils.createSessionContext(USER, "test");
+    Id itemId = new Id();
+    Id elementId = new Id();
+    ElementContext elementContext = new ElementContext(itemId, new Id());
+
+    Namespace noNamespace = null;
+    doReturn(new Response<>(noNamespace))
+        .when(stateAdaptorMock).getNamespace(context, itemId, elementId);
+
+    Assert.assertNull(elementManager.getConflict(context, elementContext, elementId));
+    verify(collaborationAdaptorMock, never()).getElementConflict(any(), any(), any(), any());
+  }
+
+  @Test
+  public void testGetConflictFailurePropagates() {
+    SessionContext context = TestUtils.createSessionContext(USER, "test");
+    Id itemId = new Id();
+    Id elementId = new Id();
+    ElementContext elementContext = new ElementContext(itemId, new Id());
+    doReturn(new Response<>(Namespace.ROOT_NAMESPACE))
+        .when(stateAdaptorMock).getNamespace(context, itemId, elementId);
+    ReturnCode cause = collaborationStoreFailure();
+    doReturn(new Response<CoreElementConflict>(cause)).when(collaborationAdaptorMock)
+        .getElementConflict(context, elementContext, Namespace.ROOT_NAMESPACE, elementId);
+
+    TestUtils.assertWrappedFailure(TestUtils
+            .captureFailure(() -> elementManager.getConflict(context, elementContext, elementId)),
+        ErrorCode.ZU_ELEMENT_GET_CONFLICT, cause);
+  }
+
+  @Test
+  public void testSaveCommitsAndBumpsTheVersionModificationTime() {
+    SessionContext context = TestUtils.createSessionContext(USER, "test");
+    ElementContext elementContext = new ElementContext(new Id(), new Id());
+    CoreElement root = createCoreElement(null, Action.CREATE, null, null, "root", null);
+
+    elementManager.save(context, elementContext, root, "commit message");
+
+    verify(collaborationAdaptorMock).commitElements(context, elementContext, "commit message");
+    verify(versionManagerMock).updateModificationTime(eq(context), eq(Space.PRIVATE),
+        eq(elementContext.getItemId()), eq(elementContext.getVersionId()), any(Date.class));
+  }
+
+  @Test
+  public void testResolveConflictOfACompletedMergeSavesTheChange() {
+    SessionContext context = TestUtils.createSessionContext(USER, "test");
+    Id itemId = new Id();
+    ElementContext elementContext = new ElementContext(itemId, new Id());
+    CoreElement element = createCoreElement(new Id(), Action.UPDATE, null, null, "element", null);
+
+    Id parentElementId = new Id();
+    Namespace namespace = new Namespace(Namespace.ROOT_NAMESPACE, parentElementId);
+    doReturn(new Response<>(namespace))
+        .when(stateAdaptorMock).getNamespace(context, itemId, element.getId());
+
+    CoreElement changedElement = createCoreElement(new Id(), Action.UPDATE, null, null, "changed",
+        null);
+    ItemVersionChange changedVersion = new ItemVersionChange();
+    changedVersion.setAction(Action.UPDATE);
+    changedVersion.setItemVersion(
+        TestUtils.createItemVersion(elementContext.getVersionId(), new Id(), "v1"));
+    CoreMergeChange mergeChange = new CoreMergeChange();
+    mergeChange.setChangedVersion(changedVersion);
+    mergeChange.setChangedElements(Collections.singletonList(changedElement));
+
+    CoreMergeResult retrievedResult = new CoreMergeResult();
+    retrievedResult.setChange(mergeChange);
+    doReturn(new Response<>(retrievedResult)).when(collaborationAdaptorMock)
+        .resolveElementConflict(context, elementContext, element, Resolution.THEIRS);
+
+    CoreMergeResult result =
+        elementManager.resolveConflict(context, elementContext, element, Resolution.THEIRS);
+
+    Assert.assertSame(result, retrievedResult);
+    Assert.assertEquals(element.getNamespace(), namespace);
+    Assert.assertEquals(element.getParentId(), parentElementId);
+    verify(versionManagerMock).saveMergeChange(context, Space.PUBLIC, itemId, changedVersion);
+    verify(indexingVisitorMock)
+        .visit(context, elementContext, Space.PUBLIC, changedElement);
+  }
+
+  @Test
+  public void testResolveConflictOfAnIncompleteMergeSavesNothing() {
+    SessionContext context = TestUtils.createSessionContext(USER, "test");
+    Id itemId = new Id();
+    ElementContext elementContext = new ElementContext(itemId, new Id());
+    CoreElement element = createCoreElement(new Id(), Action.UPDATE, null, null, "element", null);
+    doReturn(new Response<>(Namespace.ROOT_NAMESPACE))
+        .when(stateAdaptorMock).getNamespace(context, itemId, element.getId());
+
+    CoreMergeConflict conflict = new CoreMergeConflict();
+    conflict.setElementConflicts(Collections.singletonList(new CoreElementConflict()));
+    CoreMergeResult retrievedResult = new CoreMergeResult();
+    retrievedResult.setConflict(conflict);
+    doReturn(new Response<>(retrievedResult)).when(collaborationAdaptorMock)
+        .resolveElementConflict(context, elementContext, element, Resolution.OTHER);
+
+    CoreMergeResult result =
+        elementManager.resolveConflict(context, elementContext, element, Resolution.OTHER);
+
+    Assert.assertSame(result, retrievedResult);
+    verify(versionManagerMock, never()).saveMergeChange(any(), any(), any(), any());
+    verify(indexingVisitorMock, never()).visit(any(), any(), any(), any());
+  }
+
+  @Test
+  public void testResolveConflictWithoutAResultSavesNothing() {
+    SessionContext context = TestUtils.createSessionContext(USER, "test");
+    Id itemId = new Id();
+    ElementContext elementContext = new ElementContext(itemId, new Id());
+    CoreElement element = createCoreElement(new Id(), Action.UPDATE, null, null, "element", null);
+    doReturn(new Response<>(Namespace.ROOT_NAMESPACE))
+        .when(stateAdaptorMock).getNamespace(context, itemId, element.getId());
+
+    CoreMergeResult noResult = null;
+    doReturn(new Response<>(noResult)).when(collaborationAdaptorMock)
+        .resolveElementConflict(context, elementContext, element, Resolution.THEIRS);
+
+    Assert.assertNull(
+        elementManager.resolveConflict(context, elementContext, element, Resolution.THEIRS));
+    verify(versionManagerMock, never()).saveMergeChange(any(), any(), any(), any());
+    verify(indexingVisitorMock, never()).visit(any(), any(), any(), any());
+  }
+
+  @Test
+  public void testResolveConflictOfACompletedMergeWithoutAChangeSavesNothing() {
+    SessionContext context = TestUtils.createSessionContext(USER, "test");
+    Id itemId = new Id();
+    ElementContext elementContext = new ElementContext(itemId, new Id());
+    CoreElement element = createCoreElement(new Id(), Action.UPDATE, null, null, "element", null);
+    doReturn(new Response<>(Namespace.ROOT_NAMESPACE))
+        .when(stateAdaptorMock).getNamespace(context, itemId, element.getId());
+
+    CoreMergeResult retrievedResult = new CoreMergeResult();
+    doReturn(new Response<>(retrievedResult)).when(collaborationAdaptorMock)
+        .resolveElementConflict(context, elementContext, element, Resolution.YOURS);
+
+    Assert.assertSame(
+        elementManager.resolveConflict(context, elementContext, element, Resolution.YOURS),
+        retrievedResult);
+    verify(versionManagerMock, never()).saveMergeChange(any(), any(), any(), any());
+    verify(indexingVisitorMock, never()).visit(any(), any(), any(), any());
+  }
+
+  @Test
+  public void testResolveConflictFailurePropagates() {
+    SessionContext context = TestUtils.createSessionContext(USER, "test");
+    Id itemId = new Id();
+    ElementContext elementContext = new ElementContext(itemId, new Id());
+    CoreElement element = createCoreElement(new Id(), Action.UPDATE, null, null, "element", null);
+    doReturn(new Response<>(Namespace.ROOT_NAMESPACE))
+        .when(stateAdaptorMock).getNamespace(context, itemId, element.getId());
+
+    ReturnCode cause = collaborationStoreFailure();
+    doReturn(new Response<CoreMergeResult>(cause)).when(collaborationAdaptorMock)
+        .resolveElementConflict(context, elementContext, element, Resolution.YOURS);
+
+    TestUtils.assertWrappedFailure(TestUtils.captureFailure(() -> elementManager
+            .resolveConflict(context, elementContext, element, Resolution.YOURS)),
+        ErrorCode.ZU_ELEMENT_RESOLVE_CONFLICT, cause);
+  }
+
+  @Test
+  public void testSearchFailurePropagates() {
+    SessionContext context = TestUtils.createSessionContext(USER, "test");
+    SearchCriteria searchCriteria = new SearchCriteria() {
+    };
+    ReturnCode cause = new ReturnCode(ErrorCode.IN_SEARCH, Module.ZSIP, "index down", null);
+    doReturn(new Response<SearchResult>(cause))
+        .when(searchIndexAdaptorMock).search(context, searchCriteria);
+
+    TestUtils.assertWrappedFailure(
+        TestUtils.captureFailure(() -> elementManager.search(context, searchCriteria)),
+        ErrorCode.ZU_SEARCH, cause);
+  }
+
+  @Test
+  public void testSaveMergeChangeIndexesEveryChangedElement() {
+    SessionContext context = TestUtils.createSessionContext(USER, "test");
+    ElementContext elementContext = new ElementContext(new Id(), new Id());
+    CoreElement first = createCoreElement(new Id(), Action.CREATE, null, null, "first", null);
+    CoreElement second = createCoreElement(new Id(), Action.DELETE, null, null, "second", null);
+
+    elementManager
+        .saveMergeChange(context, Space.PUBLIC, elementContext, Arrays.asList(first, second));
+
+    verify(indexingVisitorMock).visit(context, elementContext, Space.PUBLIC, first);
+    verify(indexingVisitorMock).visit(context, elementContext, Space.PUBLIC, second);
+    verify(collaborativeStoreVisitorMock, never()).visit(any(), any(), any(), any());
+  }
+
+  @Test
+  public void testSaveMergeChangeWithoutElementsDoesNothing() {
+    SessionContext context = TestUtils.createSessionContext(USER, "test");
+    ElementContext elementContext = new ElementContext(new Id(), new Id());
+
+    elementManager.saveMergeChange(context, Space.PUBLIC, elementContext, null);
+
+    verify(indexingVisitorMock, never()).visit(any(), any(), any(), any());
+  }
+
+  @Test
+  public void testOperationOnAMissingVersionOfAnExistingItemReportsTheMissingVersion() {
+    SessionContext context = TestUtils.createSessionContext(USER, "test");
+    Id itemId = new Id();
+    Id versionId = new Id();
+    ElementContext elementContext = new ElementContext(itemId, versionId);
+    doReturn(false).when(versionManagerMock).isExist(context, Space.PRIVATE, itemId, versionId);
+    doReturn(true).when(itemManagerMock).isExist(context, itemId);
+
+    ReturnCode returnCode =
+        TestUtils.captureFailure(() -> elementManager.list(context, elementContext, null));
+
+    TestUtils.assertErrorCode(returnCode, Module.ZDB, ErrorCode.ZU_ITEM_VERSION_NOT_EXIST);
+    Assert.assertEquals(returnCode.getMessage(), String
+        .format(Messages.ITEM_VERSION_NOT_EXIST, itemId, versionId, Space.PRIVATE));
+  }
+
+  @Test
+  public void testOperationOnAMissingItemReportsTheMissingItem() {
+    SessionContext context = TestUtils.createSessionContext(USER, "test");
+    Id itemId = new Id();
+    Id versionId = new Id();
+    ElementContext elementContext = new ElementContext(itemId, versionId);
+    doReturn(false).when(versionManagerMock).isExist(context, Space.PRIVATE, itemId, versionId);
+    doReturn(false).when(itemManagerMock).isExist(context, itemId);
+
+    ReturnCode returnCode =
+        TestUtils.captureFailure(() -> elementManager.list(context, elementContext, null));
+
+    TestUtils.assertErrorCode(returnCode, Module.ZDB, ErrorCode.ZU_ITEM_VERSION_NOT_EXIST);
+    Assert.assertEquals(returnCode.getMessage(),
+        String.format(Messages.ITEM_NOT_EXIST, itemId));
+  }
+
+  private ReturnCode stateStoreFailure() {
+    return new ReturnCode(ErrorCode.MD_ELEMENT_GET, Module.ZMDP, "state store down", null);
+  }
+
+  private ReturnCode collaborationStoreFailure() {
+    return new ReturnCode(ErrorCode.CL_ELEMENT_GET, Module.ZCSP, "collaboration store down", null);
   }
 
   private CoreElement createCoreElement(Id elementId, Action action, Id parentId,

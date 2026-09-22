@@ -79,4 +79,20 @@ public class CollaborativeStoreElementVisitorTest {
           new Namespace(element.getNamespace(), element.getId()));
     });
   }
+
+  @Test
+  public void testVisitElementWithNullSubs() throws Exception {
+    SessionContext context = TestUtils.createSessionContext(USER, "test");
+    ElementContext elementContext = new ElementContext(new Id(), new Id());
+    Space space = Space.PRIVATE;
+    CoreElement element = new CoreElement();
+    element.setId(new Id());
+    element.setNamespace(Namespace.ROOT_NAMESPACE);
+    element.setSubElements(null);
+
+    visitor.visit(context, elementContext, space, element);
+
+    verify(elementCommandFactoryMock).executeCommand(context, elementContext, space, element);
+    Assert.assertNull(element.getSubElements());
+  }
 }
