@@ -30,25 +30,18 @@
 #     8 of 79 tests execute on JDK 17/21 versus 79 of 79 on JDK 11.
 #     The boundary is JDK 16, not 21.
 #
-#   run_jacoco: false AND -Djacoco.skip=true
-#     Both are needed and they do different things. run_jacoco stops the
-#     build action injecting its own JaCoCo arguments; -Djacoco.skip
-#     disables the jacoco-maven-plugin 0.7.7.201606060606 that eight of
-#     the project's own POMs configure. That 2016 release predates Java 9
-#     and kills the forked JVM at premain on every JDK >= 9:
-#       java.lang.RuntimeException: Class java/util/UUID could not be
-#       instrumented ... processing of -javaagent failed
-#     which surfaces as 'Tests run: 0' and 'The forked VM terminated
-#     without properly saying goodbye'. The plugin version is hardcoded
-#     rather than held in a property, so it cannot be overridden from the
-#     command line. Restoring real coverage means bumping JaCoCo to
-#     >= 0.8.7 in those eight POMs; until then coverage is off, not
-#     silently broken.
-#
-#   -Dgpg.skip
-#     The root POM binds maven-gpg-plugin 1.6 to the verify phase. Without
-#     this the build fails with 'Exit code: 2' for want of a signing key.
-#     Upstream's own Travis configuration passed the same flag.
+#   run_jacoco: false
+#     Coverage itself comes from the project's own jacoco-maven-plugin
+#     0.8.12, which the module POMs bind as prepare-agent plus a report
+#     execution on the test phase, so every module with tests writes its
+#     own target/jacoco.exec and target/site/jacoco. This input drives a
+#     different layer: set true, maven-build-action redirects the whole
+#     reactor at one shared execution file and adds an aggregate
+#     jacoco:report and coverage-badge pass over it. That aggregation is
+#     what stays off; where the data lands remains the POMs' business.
+#     Do not pair it with -Djacoco.skip -- 0.8.12 honours that property,
+#     so the agent never attaches and the lane still goes green on all
+#     147 tests while writing no execution data at all.
 #
 #   -Dmaven.javadoc.skip=true
 #     maven-javadoc-plugin 2.10.4 resolves detectJavaApiLink over plain
@@ -64,10 +57,9 @@
 #     (the JJB 'mvn36' setting) also works, but 3.9.11 brings Surefire
 #     3.2.5 instead of 2.12.4 and needs no deviation from the default.
 #
-# No Maven settings.xml is required. The only external dependencies are
-# com.amdocs.zusammen:zusammen-commons-{configuration,health,log,utils},
-# declared at ${project.version} and published on Maven Central, so the
-# verify lane needs no ONAP Nexus credentials.
+# No Maven settings.xml is required. zusammen-commons is a module of this
+# reactor rather than a coordinate to resolve, and everything else comes
+# from Maven Central, so the verify lane needs no ONAP Nexus credentials.
 # =============================================================================
 name: 'Gerrit Verify'
 
@@ -188,8 +180,7 @@ jobs:
       java_version: '11'
       mvn_version: '3.9.11'
       run_jacoco: false
-      # yamllint disable-line rule:line-length
-      mvn_params: '-Dgpg.skip -Djacoco.skip=true -Dmaven.javadoc.skip=true'
+      mvn_params: '-Dmaven.javadoc.skip=true'
       # 79 of 79 tests pass on JDK 11, so the lane gates on them.
       test_permit_fail: false
       # Audit, do not block. Grype gates at medium by default, and the
