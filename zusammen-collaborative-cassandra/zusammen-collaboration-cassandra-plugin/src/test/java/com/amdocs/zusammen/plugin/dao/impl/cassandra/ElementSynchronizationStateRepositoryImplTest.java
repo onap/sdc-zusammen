@@ -114,6 +114,41 @@ public class ElementSynchronizationStateRepositoryImplTest {
     }
 
     @Test
+    public void testListCollapsesTheRevisionsOfAnElement() {
+        doReturn(resultSetOfAll(Arrays.asList(syncStateRow("element-4", "element-revision-5", PUBLISH_TIME, false),
+                syncStateRow("element-4", "element-revision-6", PUBLISH_TIME, false))))
+                .when(syncStateAccessor).list(SPACE, "item-1", "version-2");
+
+        Assert.assertEquals(repository.list(context, elementContext).size(), 1);
+    }
+
+    @Test
+    public void testListPerRevisionKeepsEveryRevisionOfAnElement() {
+        doReturn(resultSetOfAll(Arrays.asList(syncStateRow("element-4", "element-revision-5", PUBLISH_TIME, false),
+                syncStateRow("element-4", "element-revision-6", null, true))))
+                .when(syncStateAccessor).list(SPACE, "item-1", "version-2");
+
+        List<SynchronizationStateEntity> states = repository.listPerRevision(context, elementContext);
+
+        Assert.assertEquals(states.size(), 2);
+        Assert.assertEquals(states.get(0).getId(), ELEMENT_ID);
+        Assert.assertEquals(states.get(0).getRevisionId(), ELEMENT_REVISION_ID);
+        Assert.assertEquals(states.get(0).getPublishTime(), PUBLISH_TIME);
+        Assert.assertFalse(states.get(0).isDirty());
+        Assert.assertEquals(states.get(1).getId(), ELEMENT_ID);
+        Assert.assertEquals(states.get(1).getRevisionId(), new Id("element-revision-6"));
+        Assert.assertNull(states.get(1).getPublishTime());
+        Assert.assertTrue(states.get(1).isDirty());
+    }
+
+    @Test
+    public void testListPerRevisionReturnsEmptyListWhenTheQueryYieldsNoRows() {
+        doReturn(resultSetOfAll(null)).when(syncStateAccessor).list(SPACE, "item-1", "version-2");
+
+        Assert.assertTrue(repository.listPerRevision(context, elementContext).isEmpty());
+    }
+
+    @Test
     public void testDeleteAllDropsEveryElementStateOfTheVersion() {
         repository.deleteAll(context, elementContext);
 

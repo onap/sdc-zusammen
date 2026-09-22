@@ -10,6 +10,7 @@ import com.datastax.driver.core.Row;
 import com.datastax.driver.mapping.annotations.Accessor;
 import com.datastax.driver.mapping.annotations.Query;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
@@ -25,13 +26,18 @@ public class ElementSynchronizationStateRepositoryImpl
   @Override
   public Collection<SynchronizationStateEntity> list(SessionContext context,
                                                      ElementEntityContext elementContext) {
+    return new HashSet<>(listPerRevision(context, elementContext));
+  }
+
+  @Override
+  public List<SynchronizationStateEntity> listPerRevision(SessionContext context,
+                                                          ElementEntityContext elementContext) {
     List<Row> rows = getAccessor(context)
         .list(elementContext.getSpace(),
             elementContext.getItemId().toString(),
             elementContext.getVersionId().toString()).all();
-    return rows == null ? new HashSet<>()
-        : rows.stream().map(this::getSynchronizationStateEntity).collect(Collectors.toSet());
-
+    return rows == null ? new ArrayList<>()
+        : rows.stream().map(this::getSynchronizationStateEntity).collect(Collectors.toList());
   }
 
   @Override
