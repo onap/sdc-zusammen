@@ -22,7 +22,7 @@
     <parent>
         <groupId>org.onap.sdc.zusammen.plugin</groupId>
         <artifactId>zusammen-collaborative-cassandra</artifactId>
-        <version>1.0.3-SNAPSHOT</version>
+        <version>1.0.4-SNAPSHOT</version>
     </parent>
 
     <artifactId>zusammen-collaboration-cassandra-plugin</artifactId>

@@ -39,7 +39,7 @@
     <parent>
         <groupId>org.onap.sdc.zusammen</groupId>
         <artifactId>zusammen</artifactId>
-        <version>1.0.3-SNAPSHOT</version>
+        <version>1.0.4-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <groupId>org.onap.sdc.zusammen.plugin</groupId>
