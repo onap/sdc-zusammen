@@ -162,6 +162,29 @@ public class VersionStateStoreTest {
     testDeleteItemVersion(Space.PUBLIC, StateStoreConstants.PUBLIC_SPACE);
   }
 
+  @Test
+  public void testUpdatePrivateItemVersionModificationTime() throws Exception {
+    testUpdateItemVersionModificationTime(Space.PRIVATE, USER);
+  }
+
+  @Test
+  public void testUpdatePublicItemVersionModificationTime() throws Exception {
+    testUpdateItemVersionModificationTime(Space.PUBLIC, StateStoreConstants.PUBLIC_SPACE);
+  }
+
+  private void testUpdateItemVersionModificationTime(Space space, String spaceName) {
+    Id itemId = new Id();
+    Id versionId = new Id();
+    Date modificationTime = new Date();
+
+    versionStateStore
+        .updateItemVersionModificationTime(context, space, itemId, versionId, modificationTime);
+
+    verify(versionDaoMock)
+        .updateItemVersionModificationTime(context, spaceName, itemId, versionId,
+            modificationTime);
+  }
+
   private void testIsItemVersionExist(Space space, String spaceName) {
     Id itemId = new Id();
     ItemVersion retrievedVersion = TestUtils.createItemVersion(new Id(), null, "v1");

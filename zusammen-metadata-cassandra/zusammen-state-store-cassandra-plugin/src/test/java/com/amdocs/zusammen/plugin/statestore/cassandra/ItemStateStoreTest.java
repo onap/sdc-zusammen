@@ -133,6 +133,16 @@ public class ItemStateStoreTest {
   }
 
   @Test
+  public void testUpdateItemModificationTime() throws Exception {
+    Id itemId = new Id();
+    Date date = new Date();
+
+    itemStateStore.updateItemModificationTime(context, itemId, date);
+
+    verify(itemDaoMock).updateItemModificationTime(context, itemId, date);
+  }
+
+  @Test
   public void testDeleteItem() throws Exception {
     Id itemId = new Id();
     ItemVersion v1 = TestUtils.createItemVersion(new Id(), null, "v1");

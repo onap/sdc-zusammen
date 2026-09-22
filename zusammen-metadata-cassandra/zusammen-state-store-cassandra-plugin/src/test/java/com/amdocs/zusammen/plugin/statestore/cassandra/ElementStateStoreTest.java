@@ -43,6 +43,7 @@ import java.util.Optional;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -78,6 +79,45 @@ public class ElementStateStoreTest {
   public void testListElements() throws Exception {
     Id elementId = new Id();
     testListElements(elementId, elementId);
+  }
+
+  @Test
+  public void testListElementsOfNonExistingElement() throws Exception {
+    doReturn(Optional.empty()).when(elementRepositoryMock).get(any(), any(), any());
+
+    Collection<StateElement> elements =
+        elementStateStore.listElements(context, elementContext, new Id());
+
+    Assert.assertTrue(elements.isEmpty());
+  }
+
+  @Test
+  public void testListElementsWhenSubElementIdsAreNull() throws Exception {
+    Id elementId = new Id();
+    ElementEntity retrievedElement = getRetrievedElement(elementId, null, null);
+    retrievedElement.setSubElementIds(null);
+    doReturn(Optional.of(retrievedElement))
+        .when(elementRepositoryMock).get(any(), any(), any());
+
+    Collection<StateElement> elements =
+        elementStateStore.listElements(context, elementContext, elementId);
+
+    Assert.assertTrue(elements.isEmpty());
+  }
+
+  @Test(expectedExceptions = IllegalStateException.class)
+  public void testListElementsFailsWhenASubElementIsMissing() throws Exception {
+    Id elementId = new Id();
+    ElementEntity missingSubElement = new ElementEntity(new Id());
+    ElementEntity parentElement =
+        getRetrievedElement(elementId, null, null, missingSubElement.getId());
+    ElementEntityContext elementEntityContext = new ElementEntityContext(USER, elementContext);
+    doReturn(Optional.of(parentElement)).when(elementRepositoryMock)
+        .get(eq(context), eq(elementEntityContext), eq(parentElement));
+    doReturn(Optional.empty()).when(elementRepositoryMock)
+        .get(eq(context), eq(elementEntityContext), eq(missingSubElement));
+
+    elementStateStore.listElements(context, elementContext, elementId);
   }
 
   @Test
@@ -222,6 +262,17 @@ public class ElementStateStoreTest {
         .map(ElementEntity::new)
         .forEach(subElement -> verify(elementRepositoryMock)
             .delete(eq(context), eq(elementEntityContext), eq(subElement)));
+  }
+
+  @Test
+  public void testDeleteNonExistingElement() throws Exception {
+    StateElement element =
+        new StateElement(new Id(), new Id(), Namespace.ROOT_NAMESPACE, new Id());
+    doReturn(Optional.empty()).when(elementRepositoryMock).get(any(), any(), any());
+
+    elementStateStore.deleteElement(context, element);
+
+    verify(elementRepositoryMock, never()).delete(any(), any(), any());
   }
 
   private void testListElements(Id requestedElementId, Id stateStoreElementId) {

@@ -24,10 +24,12 @@ import com.amdocs.zusammen.datatypes.UserInfo;
 import com.amdocs.zusammen.datatypes.item.ElementContext;
 import com.amdocs.zusammen.datatypes.item.Info;
 import com.amdocs.zusammen.datatypes.item.ItemVersionData;
+import com.amdocs.zusammen.datatypes.response.Response;
 import com.amdocs.zusammen.sdk.state.types.StateElement;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.testng.Assert;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
@@ -35,6 +37,7 @@ import java.util.Date;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 public class StateStoreImplTest {
   private static final String TENANT = "test";
@@ -105,6 +108,32 @@ public class StateStoreImplTest {
   public void testDeleteItem() throws Exception {
     stateStore.deleteItem(context, itemId);
     verify(itemStateStoreMock).deleteItem(context, itemId);
+  }
+
+  @Test
+  public void testUpdateItemModificationTime() throws Exception {
+    Date date = new Date();
+    stateStore.updateItemModificationTime(context, itemId, date);
+    verify(itemStateStoreMock).updateItemModificationTime(context, itemId, date);
+  }
+
+  @Test
+  public void testUpdateItemVersionModificationTime() throws Exception {
+    Date date = new Date();
+    stateStore.updateItemVersionModificationTime(context, space, itemId, versionId, date);
+    verify(versionStateStoreMock)
+        .updateItemVersionModificationTime(context, space, itemId, versionId, date);
+  }
+
+  @Test
+  public void testGetElementNamespace() throws Exception {
+    Namespace retrievedNamespace = new Namespace(Namespace.ROOT_NAMESPACE, elementId);
+    when(elementStateStoreMock.getElementNamespace(context, itemId, elementId))
+        .thenReturn(retrievedNamespace);
+
+    Response<Namespace> response = stateStore.getElementNamespace(context, itemId, elementId);
+
+    Assert.assertEquals(response.getValue(), retrievedNamespace);
   }
 
   @Test

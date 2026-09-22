@@ -65,6 +65,18 @@ public class KeepAliveStoreTest {
         Response<HealthInfo> healthInfoResponse = stateStore.checkHealth(context);
         HealthInfo value = healthInfoResponse.getValue();
         assertEquals(value.getHealthStatus(), HealthStatus.DOWN);
+        assertEquals(value.getDescription(), "DB Schema does not exist.");
+    }
+
+    @Test
+    public void testDownWhenTheKeepAliveQueryThrows() {
+        when(keepAliveDao.get(context)).thenThrow(new IllegalStateException("no keyspace"));
+
+        Response<HealthInfo> healthInfoResponse = stateStore.checkHealth(context);
+
+        HealthInfo value = healthInfoResponse.getValue();
+        assertEquals(value.getHealthStatus(), HealthStatus.DOWN);
+        assertEquals(value.getDescription(), "no keyspace");
     }
 
 }
