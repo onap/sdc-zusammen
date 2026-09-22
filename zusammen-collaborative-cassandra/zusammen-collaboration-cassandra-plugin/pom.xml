@@ -51,6 +51,59 @@
             <version>${project.version}</version>
         </dependency>
         <dependency>
+            <groupId>org.onap.sdc.zusammen</groupId>
+            <artifactId>zusammen-datatypes</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.onap.sdc.zusammen</groupId>
+            <artifactId>zusammen-commons-health</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <!-- slf4j-api is excluded from all three driver artifacts, not just from the one that
+             declares it: declaring the driver here moves its slf4j-api 1.7.25 a level nearer than
+             the 1.7.10 zusammen-commons-log brings, and an exclusion on cassandra-driver-core alone
+             is bypassed because -mapping and -extras reach it too. Without all three, a change that
+             only moves declarations would bump slf4j-api. -->
+        <dependency>
+            <groupId>com.datastax.cassandra</groupId>
+            <artifactId>cassandra-driver-core</artifactId>
+            <version>3.6.0</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-api</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>com.datastax.cassandra</groupId>
+            <artifactId>cassandra-driver-mapping</artifactId>
+            <version>3.6.0</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-api</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>com.datastax.cassandra</groupId>
+            <artifactId>cassandra-driver-extras</artifactId>
+            <version>3.6.0</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-api</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>2.7</version>
+        </dependency>
+        <dependency>
             <groupId>org.testng</groupId>
             <artifactId>testng</artifactId>
             <scope>test</scope>
