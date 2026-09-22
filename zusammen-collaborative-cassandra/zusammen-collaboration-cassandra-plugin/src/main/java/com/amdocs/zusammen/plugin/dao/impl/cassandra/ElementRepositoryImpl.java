@@ -177,9 +177,12 @@ public class ElementRepositoryImpl implements ElementRepository {
 
         Map<String, String> elementIds = new TreeMap<>();
         elementIds.put(element.getId().toString(), elementContext.getRevisionId().getValue());
-        getVersionElementsAccessor(context)
-                .addElements(elementIds, elementContext.getSpace(), elementContext.getItemId().toString(),
-                        elementContext.getVersionId().getValue(), elementContext.getRevisionId().getValue());
+        if (!VersionElementsWriteBuffer.addElements(elementContext.getSpace(), elementContext.getItemId().toString(),
+                elementContext.getVersionId().getValue(), elementContext.getRevisionId().getValue(), elementIds)) {
+            getVersionElementsAccessor(context)
+                    .addElements(elementIds, elementContext.getSpace(), elementContext.getItemId().toString(),
+                            elementContext.getVersionId().getValue(), elementContext.getRevisionId().getValue());
+        }
         VersionElementIdsCache.added(elementContext, elementIds);
     }
 
@@ -216,9 +219,12 @@ public class ElementRepositoryImpl implements ElementRepository {
 
         Map<String, String> elementIds = new TreeMap<>();
         elementIds.put(element.getId().getValue(), elementContext.getRevisionId().getValue());
-        getVersionElementsAccessor(context)
-                .addElements(elementIds, elementContext.getSpace(), elementContext.getItemId().toString(),
-                        elementContext.getVersionId().getValue(), elementContext.getRevisionId().getValue());
+        if (!VersionElementsWriteBuffer.addElements(elementContext.getSpace(), elementContext.getItemId().toString(),
+                elementContext.getVersionId().getValue(), elementContext.getRevisionId().getValue(), elementIds)) {
+            getVersionElementsAccessor(context)
+                    .addElements(elementIds, elementContext.getSpace(), elementContext.getItemId().toString(),
+                            elementContext.getVersionId().getValue(), elementContext.getRevisionId().getValue());
+        }
         VersionElementIdsCache.added(elementContext, elementIds);
     }
 
@@ -229,10 +235,14 @@ public class ElementRepositoryImpl implements ElementRepository {
                 elementContext.getVersionId().toString(), element.getId().toString(),
                 elementContext.getRevisionId().getValue());
 
-        getVersionElementsAccessor(context)
-                .removeElements(Collections.singleton(element.getId().toString()), elementContext.getSpace(),
-                        elementContext.getItemId().toString(), elementContext.getVersionId().toString(),
-                        elementContext.getRevisionId().getValue());
+        if (!VersionElementsWriteBuffer.removeElements(elementContext.getSpace(),
+                elementContext.getItemId().toString(), elementContext.getVersionId().toString(),
+                elementContext.getRevisionId().getValue(), Collections.singleton(element.getId().toString()))) {
+            getVersionElementsAccessor(context)
+                    .removeElements(Collections.singleton(element.getId().toString()), elementContext.getSpace(),
+                            elementContext.getItemId().toString(), elementContext.getVersionId().toString(),
+                            elementContext.getRevisionId().getValue());
+        }
         VersionElementIdsCache.removed(elementContext, Collections.singleton(element.getId().toString()));
     }
 
@@ -250,9 +260,12 @@ public class ElementRepositoryImpl implements ElementRepository {
 
         Map<String, String> elementIds = new TreeMap<>();
         elementIds.put(element.getParentId().toString(), elementContext.getRevisionId().getValue());
-        getVersionElementsAccessor(context)
-                .addElements(elementIds, elementContext.getSpace(), elementContext.getItemId().getValue(),
-                        elementContext.getVersionId().getValue(), elementContext.getRevisionId().getValue());
+        if (!VersionElementsWriteBuffer.addElements(elementContext.getSpace(), elementContext.getItemId().getValue(),
+                elementContext.getVersionId().getValue(), elementContext.getRevisionId().getValue(), elementIds)) {
+            getVersionElementsAccessor(context)
+                    .addElements(elementIds, elementContext.getSpace(), elementContext.getItemId().getValue(),
+                            elementContext.getVersionId().getValue(), elementContext.getRevisionId().getValue());
+        }
         VersionElementIdsCache.added(elementContext, elementIds);
     }
 
@@ -272,17 +285,24 @@ public class ElementRepositoryImpl implements ElementRepository {
                         elementContext.getItemId().toString(), elementContext.getVersionId().toString(),
                         element.getParentId().toString(), elementContext.getRevisionId().getValue());
 
-        getVersionElementsAccessor(context)
-                .removeElements(Collections.singleton(element.getId().toString()), elementContext.getSpace(),
-                        elementContext.getItemId().getValue(), elementContext.getVersionId().getValue(),
-                        elementContext.getRevisionId().getValue());
+        if (!VersionElementsWriteBuffer.removeElements(elementContext.getSpace(),
+                elementContext.getItemId().getValue(), elementContext.getVersionId().getValue(),
+                elementContext.getRevisionId().getValue(), Collections.singleton(element.getId().toString()))) {
+            getVersionElementsAccessor(context)
+                    .removeElements(Collections.singleton(element.getId().toString()), elementContext.getSpace(),
+                            elementContext.getItemId().getValue(), elementContext.getVersionId().getValue(),
+                            elementContext.getRevisionId().getValue());
+        }
         VersionElementIdsCache.removed(elementContext, Collections.singleton(element.getId().toString()));
 
         Map<String, String> elementIds = new TreeMap<>();
         elementIds.put(element.getParentId().toString(), elementContext.getRevisionId().getValue());
-        getVersionElementsAccessor(context)
-                .addElements(elementIds, elementContext.getSpace(), elementContext.getItemId().getValue(),
-                        elementContext.getVersionId().getValue(), elementContext.getRevisionId().getValue());
+        if (!VersionElementsWriteBuffer.addElements(elementContext.getSpace(), elementContext.getItemId().getValue(),
+                elementContext.getVersionId().getValue(), elementContext.getRevisionId().getValue(), elementIds)) {
+            getVersionElementsAccessor(context)
+                    .addElements(elementIds, elementContext.getSpace(), elementContext.getItemId().getValue(),
+                            elementContext.getVersionId().getValue(), elementContext.getRevisionId().getValue());
+        }
         VersionElementIdsCache.added(elementContext, elementIds);
     }
 

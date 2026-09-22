@@ -83,11 +83,17 @@ public class ElementSynchronizationStateRepositoryImpl
         elementSyncState.getId().toString(),
         elementContext.getRevisionId().getValue());
 
-    getVersionElementsAccessor(context).addDirtyElements(
-        Collections.singleton(elementSyncState.getId().toString()), elementContext.getSpace(),
+    if (!VersionElementsWriteBuffer.addDirtyElements(elementContext.getSpace(),
         elementContext.getItemId().toString(),
         elementContext.getVersionId().toString(),
-        elementContext.getRevisionId().getValue());
+        elementContext.getRevisionId().getValue(),
+        Collections.singleton(elementSyncState.getId().toString()))) {
+      getVersionElementsAccessor(context).addDirtyElements(
+          Collections.singleton(elementSyncState.getId().toString()), elementContext.getSpace(),
+          elementContext.getItemId().toString(),
+          elementContext.getVersionId().toString(),
+          elementContext.getRevisionId().getValue());
+    }
   }
 
   @Override
@@ -99,11 +105,17 @@ public class ElementSynchronizationStateRepositoryImpl
         elementSyncState.getId().toString(),
         elementContext.getRevisionId().getValue());
 
-    getVersionElementsAccessor(context).removeDirtyElements(
-        Collections.singleton(elementSyncState.getId().toString()), elementContext.getSpace(),
+    if (!VersionElementsWriteBuffer.removeDirtyElements(elementContext.getSpace(),
         elementContext.getItemId().toString(),
         elementContext.getVersionId().toString(),
-        elementContext.getRevisionId().getValue());
+        elementContext.getRevisionId().getValue(),
+        Collections.singleton(elementSyncState.getId().toString()))) {
+      getVersionElementsAccessor(context).removeDirtyElements(
+          Collections.singleton(elementSyncState.getId().toString()), elementContext.getSpace(),
+          elementContext.getItemId().toString(),
+          elementContext.getVersionId().toString(),
+          elementContext.getRevisionId().getValue());
+    }
   }
 
   @Override
@@ -132,17 +144,23 @@ public class ElementSynchronizationStateRepositoryImpl
         elementRevisionId.getValue());
 
     if (isDirty) {
-      getVersionElementsAccessor(context).addDirtyElements(
-          Collections.singleton(elementId.toString()), space,
-          itemId.toString(),
-          versionId.toString(),
-          versionRevisionId.getValue());
+      if (!VersionElementsWriteBuffer.addDirtyElements(space, itemId.toString(), versionId.toString(),
+          versionRevisionId.getValue(), Collections.singleton(elementId.toString()))) {
+        getVersionElementsAccessor(context).addDirtyElements(
+            Collections.singleton(elementId.toString()), space,
+            itemId.toString(),
+            versionId.toString(),
+            versionRevisionId.getValue());
+      }
     } else {
-      getVersionElementsAccessor(context).removeDirtyElements(
-          Collections.singleton(elementId.toString()), space,
-          itemId.toString(),
-          versionId.toString(),
-          versionRevisionId.getValue());
+      if (!VersionElementsWriteBuffer.removeDirtyElements(space, itemId.toString(), versionId.toString(),
+          versionRevisionId.getValue(), Collections.singleton(elementId.toString()))) {
+        getVersionElementsAccessor(context).removeDirtyElements(
+            Collections.singleton(elementId.toString()), space,
+            itemId.toString(),
+            versionId.toString(),
+            versionRevisionId.getValue());
+      }
     }
   }
 
