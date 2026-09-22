@@ -50,6 +50,11 @@
             <artifactId>slf4j-api</artifactId>
             <version>1.7.10</version>
         </dependency-->
+        <dependency>
+            <groupId>org.testng</groupId>
+            <artifactId>testng</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <url>http://maven.apache.org</url>
