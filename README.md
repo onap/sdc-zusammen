@@ -58,4 +58,4 @@ stamps the release from it.
   transport 5.1.1 and log4j-core 2.7, and nothing in ONAP uses it) — it is imported for
   future modernisation, not built or published.
 - Upstream artifactIds are preserved verbatim, including generic ones — this is why ONAP
-  ends up publishing artifacts literally called `amdocs-zusammen` and `lib`.
+  ends up publishing an artifact literally called `amdocs-zusammen`.

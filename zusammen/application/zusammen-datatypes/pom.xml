@@ -26,13 +26,6 @@
     </parent>
 
     <artifactId>zusammen-datatypes</artifactId>
-    <dependencies>
-        <dependency>
-            <groupId>org.onap.sdc.zusammen</groupId>
-            <artifactId>zusammen-commons-utils</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-    </dependencies>
     <build>
       <plugins>
         <plugin>

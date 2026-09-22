@@ -50,7 +50,6 @@
     <modules>
         <module>application</module>
         <!--module>api</module-->
-        <module>lib</module>
         <!--module>build</module-->
 
     </modules>
@@ -58,29 +57,11 @@
     <properties>
         <java.source>1.8</java.source>
         <java.target>1.8</java.target>
-        <spring.framework.version>4.0.7.RELEASE</spring.framework.version>
-        <org.codehaus.jackson.version>1.9.2</org.codehaus.jackson.version>
-        <http.client.version>4.4.1</http.client.version>
-        <cxf.version>2.7.11</cxf.version>
-        <ws.rs.version>2.0-m10</ws.rs.version>
-        <javax.inject.version>1</javax.inject.version>
-        <javax.servlet.version>2.5</javax.servlet.version>
-        <datasatx.version>2.1.9</datasatx.version>
         <testng.version>6.9.10</testng.version>
         <mockito.version>1.10.19</mockito.version>
-        <swagger.version>1.5.3</swagger.version>
         <maven-source-plugin.version>3.0.1</maven-source-plugin.version>
         <maven-javadoc-plugin.version>2.10.4</maven-javadoc-plugin.version>
     </properties>
-    <profiles>
-        <profile>
-            <id>zusammen</id>
-            <activation>
-                <activeByDefault>true</activeByDefault>
-            </activation>
-        </profile>
-    </profiles>
-
     <build>
         <plugins>
             <!-- ================================================== -->
