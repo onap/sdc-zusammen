@@ -52,6 +52,7 @@ import com.amdocs.zusammen.plugin.collaboration.TestUtils;
 import com.amdocs.zusammen.plugin.collaboration.VersionPrivateStore;
 import com.amdocs.zusammen.plugin.collaboration.VersionPublicStore;
 import com.amdocs.zusammen.plugin.collaboration.VersionStageStore;
+import com.amdocs.zusammen.plugin.dao.impl.cassandra.VersionElementIdsCache;
 import com.amdocs.zusammen.plugin.dao.types.ElementEntity;
 import com.amdocs.zusammen.plugin.dao.types.StageEntity;
 import com.amdocs.zusammen.plugin.dao.types.SynchronizationStateEntity;
@@ -78,6 +79,7 @@ import java.io.ByteArrayInputStream;
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -395,6 +397,35 @@ public class CassandraCollaborationStorePluginImplTest {
 
         Assert.assertTrue(response.isSuccessful());
         Assert.assertSame(response.getValue(), publishResult);
+    }
+
+    @Test
+    public void testPublishItemVersionCachesVersionElementIdsForTheDurationOfThePublish() {
+        List<Boolean> openWhilePublishing = new ArrayList<>();
+        when(publishService.publish(context, ITEM_ID, VERSION_ID, "publish message")).thenAnswer(invocation -> {
+            openWhilePublishing.add(VersionElementIdsCache.isOpen());
+            return new CollaborationPublishResult();
+        });
+
+        plugin.publishItemVersion(context, ITEM_ID, VERSION_ID, "publish message");
+
+        Assert.assertEquals(openWhilePublishing, Collections.singletonList(true));
+        Assert.assertFalse(VersionElementIdsCache.isOpen());
+    }
+
+    @Test
+    public void testPublishItemVersionStopsCachingWhenThePublishFails() {
+        when(publishService.publish(context, ITEM_ID, VERSION_ID, "publish message"))
+                .thenThrow(new IllegalStateException("publish blew up"));
+
+        try {
+            plugin.publishItemVersion(context, ITEM_ID, VERSION_ID, "publish message");
+            Assert.fail("the runtime exception is expected to propagate");
+        } catch (IllegalStateException expected) {
+            // the cache must not outlive the request on a pooled thread
+        }
+
+        Assert.assertFalse(VersionElementIdsCache.isOpen());
     }
 
     @Test

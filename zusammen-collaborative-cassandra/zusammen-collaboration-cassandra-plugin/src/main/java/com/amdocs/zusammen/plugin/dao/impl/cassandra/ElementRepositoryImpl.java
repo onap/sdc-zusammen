@@ -180,6 +180,7 @@ public class ElementRepositoryImpl implements ElementRepository {
         getVersionElementsAccessor(context)
                 .addElements(elementIds, elementContext.getSpace(), elementContext.getItemId().toString(),
                         elementContext.getVersionId().getValue(), elementContext.getRevisionId().getValue());
+        VersionElementIdsCache.added(elementContext, elementIds);
     }
 
     private void createElementRow(SessionContext context, ElementEntityContext elementContext, ElementEntity element) {
@@ -218,6 +219,7 @@ public class ElementRepositoryImpl implements ElementRepository {
         getVersionElementsAccessor(context)
                 .addElements(elementIds, elementContext.getSpace(), elementContext.getItemId().toString(),
                         elementContext.getVersionId().getValue(), elementContext.getRevisionId().getValue());
+        VersionElementIdsCache.added(elementContext, elementIds);
     }
 
     private void deleteElement(SessionContext context, ElementEntityContext elementContext, ElementEntity element) {
@@ -231,6 +233,7 @@ public class ElementRepositoryImpl implements ElementRepository {
                 .removeElements(Collections.singleton(element.getId().toString()), elementContext.getSpace(),
                         elementContext.getItemId().toString(), elementContext.getVersionId().toString(),
                         elementContext.getRevisionId().getValue());
+        VersionElementIdsCache.removed(elementContext, Collections.singleton(element.getId().toString()));
     }
 
     private void addElementToParent(SessionContext context, ElementEntityContext elementContext,
@@ -250,6 +253,7 @@ public class ElementRepositoryImpl implements ElementRepository {
         getVersionElementsAccessor(context)
                 .addElements(elementIds, elementContext.getSpace(), elementContext.getItemId().getValue(),
                         elementContext.getVersionId().getValue(), elementContext.getRevisionId().getValue());
+        VersionElementIdsCache.added(elementContext, elementIds);
     }
 
     private void removeElementFromParent(SessionContext context, ElementEntityContext elementContext,
@@ -272,12 +276,14 @@ public class ElementRepositoryImpl implements ElementRepository {
                 .removeElements(Collections.singleton(element.getId().toString()), elementContext.getSpace(),
                         elementContext.getItemId().getValue(), elementContext.getVersionId().getValue(),
                         elementContext.getRevisionId().getValue());
+        VersionElementIdsCache.removed(elementContext, Collections.singleton(element.getId().toString()));
 
         Map<String, String> elementIds = new TreeMap<>();
         elementIds.put(element.getParentId().toString(), elementContext.getRevisionId().getValue());
         getVersionElementsAccessor(context)
                 .addElements(elementIds, elementContext.getSpace(), elementContext.getItemId().getValue(),
                         elementContext.getVersionId().getValue(), elementContext.getRevisionId().getValue());
+        VersionElementIdsCache.added(elementContext, elementIds);
     }
 
     static ElementEntity getElementEntityDescriptor(Id elementId, Row row) {
@@ -324,11 +330,21 @@ public class ElementRepositoryImpl implements ElementRepository {
     }
 
     private Map<String, String> getVersionElementIds(SessionContext context, ElementEntityContext elementContext) {
+        Map<String, String> cached = VersionElementIdsCache.cached(elementContext);
+        if (cached != null) {
+            return cached;
+        }
+
         Row row = getVersionElementsAccessor(context)
                           .get(elementContext.getSpace(), elementContext.getItemId().toString(),
                                   elementContext.getVersionId().getValue(), elementContext.getRevisionId().getValue())
                           .one();
-        return row == null ? new HashMap<>() : row.getMap(VersionElementsField.ELEMENT_IDS, String.class, String.class);
+        Map<String, String> elementIds = new HashMap<>();
+        if (row != null) {
+            elementIds.putAll(row.getMap(VersionElementsField.ELEMENT_IDS, String.class, String.class));
+        }
+        VersionElementIdsCache.remember(elementContext, elementIds);
+        return elementIds;
     }
 
     private Id getElementRevision(SessionContext context, ElementEntityContext elementContext, Id elementId) {

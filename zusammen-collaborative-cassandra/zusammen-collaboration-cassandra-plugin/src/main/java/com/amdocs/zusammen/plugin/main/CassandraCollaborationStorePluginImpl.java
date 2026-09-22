@@ -56,6 +56,7 @@ import com.amdocs.zusammen.plugin.collaboration.impl.ElementStageStoreImpl;
 import com.amdocs.zusammen.plugin.collaboration.impl.VersionPrivateStoreImpl;
 import com.amdocs.zusammen.plugin.collaboration.impl.VersionPublicStoreImpl;
 import com.amdocs.zusammen.plugin.collaboration.impl.VersionStageStoreImpl;
+import com.amdocs.zusammen.plugin.dao.impl.cassandra.VersionElementIdsCache;
 import com.amdocs.zusammen.plugin.dao.types.ElementEntity;
 import com.amdocs.zusammen.plugin.dao.types.StageEntity;
 import com.amdocs.zusammen.plugin.dao.types.SynchronizationStateEntity;
@@ -224,11 +225,14 @@ public class CassandraCollaborationStorePluginImpl implements CollaborationStore
   public Response<CollaborationPublishResult> publishItemVersion(SessionContext context,
                                                                  Id itemId, Id versionId,
                                                                  String message) {
+    VersionElementIdsCache.open();
     try {
       return new Response<>(publishService.publish(context, itemId, versionId, message));
     } catch (ZusammenException ze) {
       return new Response<>(
           new ReturnCode(ErrorCode.CL_ITEM_VERSION_PUBLISH, Module.ZCSP, null, ze.getReturnCode()));
+    } finally {
+      VersionElementIdsCache.close();
     }
   }
 

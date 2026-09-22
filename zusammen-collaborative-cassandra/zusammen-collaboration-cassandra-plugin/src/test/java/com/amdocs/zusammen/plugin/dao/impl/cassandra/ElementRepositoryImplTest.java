@@ -19,6 +19,7 @@ package com.amdocs.zusammen.plugin.dao.impl.cassandra;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
@@ -102,6 +103,7 @@ public class ElementRepositoryImplTest {
 
     @AfterMethod
     public void tearDown() throws Exception {
+        VersionElementIdsCache.close();
         CassandraAccessorSeam.uninstall();
         mocks.close();
     }
@@ -397,6 +399,117 @@ public class ElementRepositoryImplTest {
     }
 
     @Test
+    public void testVersionElementIdsAreReadOnceForARowWhileACacheScopeIsOpen() {
+        Map<String, String> stored = new HashMap<>();
+        stored.put("element-4", "revision-1");
+        stored.put("element-7", "revision-1");
+        givenVersionElements(PUBLIC_SPACE, "revision-3", versionElementsRow(stored));
+        givenElement(PUBLIC_SPACE, "element-4", "revision-1", fullElementRow());
+        givenElement(PUBLIC_SPACE, "element-7", "revision-1", fullElementRow());
+
+        VersionElementIdsCache.open();
+        repository.get(context, publicContext(REVISION_ID), new ElementEntity(ELEMENT_ID));
+        repository.get(context, publicContext(REVISION_ID), new ElementEntity(new Id("element-7")));
+
+        verify(versionElementsAccessor, times(1)).get(PUBLIC_SPACE, "item-1", "version-2", "revision-3");
+    }
+
+    @Test
+    public void testVersionElementIdsAreReadForEveryCallWithoutACacheScope() {
+        givenVersionElements(PUBLIC_SPACE, "revision-3",
+                versionElementsRow(Collections.singletonMap("element-4", "revision-1")));
+        givenElement(PUBLIC_SPACE, "element-4", "revision-1", fullElementRow());
+
+        repository.get(context, publicContext(REVISION_ID), new ElementEntity(ELEMENT_ID));
+        repository.get(context, publicContext(REVISION_ID), new ElementEntity(ELEMENT_ID));
+
+        verify(versionElementsAccessor, times(2)).get(PUBLIC_SPACE, "item-1", "version-2", "revision-3");
+    }
+
+    @Test
+    public void testACachedRowIsSeparatePerSpaceVersionAndRevision() {
+        givenVersionElements(PUBLIC_SPACE, "revision-3",
+                versionElementsRow(Collections.singletonMap("element-4", "revision-1")));
+        givenVersionElements(PUBLIC_SPACE, "revision-9",
+                versionElementsRow(Collections.singletonMap("element-4", "revision-8")));
+        givenElement(PUBLIC_SPACE, "element-4", "revision-1", fullElementRow());
+        givenElement(PUBLIC_SPACE, "element-4", "revision-8", fullElementRow());
+
+        VersionElementIdsCache.open();
+        repository.get(context, publicContext(REVISION_ID), new ElementEntity(ELEMENT_ID));
+        repository.get(context, publicContext(new Id("revision-9")), new ElementEntity(ELEMENT_ID));
+
+        verify(versionElementsAccessor).get(PUBLIC_SPACE, "item-1", "version-2", "revision-3");
+        verify(versionElementsAccessor).get(PUBLIC_SPACE, "item-1", "version-2", "revision-9");
+        verify(elementAccessor).get(PUBLIC_SPACE, "item-1", "version-2", "element-4", "revision-1");
+        verify(elementAccessor).get(PUBLIC_SPACE, "item-1", "version-2", "element-4", "revision-8");
+    }
+
+    @Test
+    public void testACachedRowIsDroppedWhenTheScopeCloses() {
+        givenVersionElements(PUBLIC_SPACE, "revision-3",
+                versionElementsRow(Collections.singletonMap("element-4", "revision-1")));
+        givenElement(PUBLIC_SPACE, "element-4", "revision-1", fullElementRow());
+
+        VersionElementIdsCache.open();
+        repository.get(context, publicContext(REVISION_ID), new ElementEntity(ELEMENT_ID));
+        VersionElementIdsCache.close();
+        repository.get(context, publicContext(REVISION_ID), new ElementEntity(ELEMENT_ID));
+
+        verify(versionElementsAccessor, times(2)).get(PUBLIC_SPACE, "item-1", "version-2", "revision-3");
+    }
+
+    @Test
+    public void testACachedRowCarriesTheElementsAddedWithinTheScope() {
+        givenVersionElements(PUBLIC_SPACE, "revision-3", versionElementsRow(new HashMap<>()));
+        givenElement(PUBLIC_SPACE, "parent-5", "revision-3", fullElementRow());
+        ElementEntityContext publicContext = publicContext(REVISION_ID);
+
+        VersionElementIdsCache.open();
+        repository.get(context, publicContext, new ElementEntity(PARENT_ID));
+        repository.create(context, publicContext, fullElement());
+
+        Assert.assertTrue(repository.get(context, publicContext, new ElementEntity(PARENT_ID)).isPresent());
+        verify(versionElementsAccessor, times(1)).get(PUBLIC_SPACE, "item-1", "version-2", "revision-3");
+    }
+
+    @Test
+    public void testACachedRowDropsTheElementsRemovedWithinTheScope() {
+        Map<String, String> stored = new HashMap<>();
+        stored.put("element-4", "revision-3");
+        givenVersionElements(PUBLIC_SPACE, "revision-3", versionElementsRow(stored));
+        givenElement(PUBLIC_SPACE, "element-4", "revision-3", fullElementRow());
+        ElementEntityContext publicContext = publicContext(REVISION_ID);
+        ElementEntity element = fullElement();
+        element.setParentId(null);
+
+        VersionElementIdsCache.open();
+        repository.get(context, publicContext, new ElementEntity(ELEMENT_ID));
+        repository.delete(context, publicContext, element);
+
+        Assert.assertFalse(repository.get(context, publicContext, new ElementEntity(ELEMENT_ID)).isPresent());
+        verify(versionElementsAccessor, times(1)).get(PUBLIC_SPACE, "item-1", "version-2", "revision-3");
+    }
+
+    @Test
+    public void testAnUnreadRowIsNotSeededFromAWriteAlone() {
+        Map<String, String> stored = new HashMap<>();
+        stored.put("element-7", "revision-3");
+        givenStatefulVersionElements(PUBLIC_SPACE, "revision-3", stored);
+        givenElement(PUBLIC_SPACE, "element-7", "revision-3", fullElementRow());
+        ElementEntityContext publicContext = publicContext(REVISION_ID);
+        ElementEntity element = fullElement();
+        element.setParentId(null);
+
+        VersionElementIdsCache.open();
+        repository.create(context, publicContext, element);
+
+        Assert.assertTrue(repository.get(context, publicContext, new ElementEntity(new Id("element-7"))).isPresent(),
+                "a write must not become the cached content of a row that was never read, or every element the "
+                        + "write did not mention would look absent from the version");
+    }
+
+    @Test
     public void testGetDescriptorInPublicSpaceReturnsEmptyWhenTheVersionDoesNotContainTheElement() {
         givenVersionElements(PUBLIC_SPACE, "revision-3",
                 versionElementsRow(Collections.singletonMap("element-99", "revision-1")));
@@ -521,6 +634,10 @@ public class ElementRepositoryImplTest {
 
     private static ElementEntityContext elementContext(Id revisionId) {
         return new ElementEntityContext(SPACE, ITEM_ID, VERSION_ID, revisionId);
+    }
+
+    private static ElementEntityContext publicContext(Id revisionId) {
+        return new ElementEntityContext(PUBLIC_SPACE, ITEM_ID, VERSION_ID, revisionId);
     }
 
     private static ElementEntity fullElement() {
