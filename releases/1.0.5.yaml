@@ -1,0 +1,6 @@
+---
+distribution_type: 'maven'
+version: '1.0.5'
+project: 'sdc/zusammen'
+log_dir: 'sdc-zusammen-maven-stage-master/4/'
+ref: 'b7fe95f4ddd7566d6b6fd4c3b1f84fe622c4be8d'
