@@ -24,6 +24,7 @@ import com.amdocs.zusammen.commons.db.api.cassandra.types.CassandraContext;
 import com.amdocs.zusammen.utils.facade.impl.AbstractFactoryBase;
 import com.datastax.driver.core.CodecRegistry;
 import com.datastax.driver.core.Configuration;
+import com.datastax.driver.core.Session;
 import com.datastax.driver.mapping.MappingManager;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -34,7 +35,8 @@ import org.mockito.Mockito;
 /**
  * Replaces the Cassandra connector behind {@link CassandraDaoUtils} so the DAO implementations can
  * be exercised without a cluster: every {@code @Accessor} interface they ask for is served from the
- * stubs registered here, and the {@link CassandraContext} they derive from the session context is
+ * stubs registered here, the {@link Session} the code executes statements on is a mock whose calls
+ * can be captured, and the {@link CassandraContext} they derive from the session context is
  * recorded for assertion.
  */
 class CassandraAccessorSeam {
@@ -48,6 +50,7 @@ class CassandraAccessorSeam {
 
     private static MappingManager mappingManager;
     private static Configuration configuration;
+    private static Session session;
 
     private CassandraAccessorSeam() {
     }
@@ -59,7 +62,10 @@ class CassandraAccessorSeam {
         configuration = Mockito.mock(Configuration.class);
         when(configuration.getCodecRegistry()).thenReturn(CODEC_REGISTRY);
 
+        session = Mockito.mock(Session.class);
+
         mappingManager = Mockito.mock(MappingManager.class);
+        when(mappingManager.getSession()).thenReturn(session);
         when(mappingManager.createAccessor(Mockito.any())).thenAnswer(invocation -> {
             Class<?> accessorType = (Class<?>) invocation.getArguments()[0];
             Object accessor = ACCESSORS.get(accessorType);
@@ -86,6 +92,7 @@ class CassandraAccessorSeam {
         CASSANDRA_CONTEXTS.clear();
         mappingManager = null;
         configuration = null;
+        session = null;
         AbstractFactoryBase.registerFactory(CassandraConnectorFactory.class,
                 (Class<? extends CassandraConnectorFactory>) Class.forName(PRODUCTION_CONNECTOR_FACTORY));
     }
@@ -99,6 +106,10 @@ class CassandraAccessorSeam {
             throw new AssertionError("no accessor was requested");
         }
         return CASSANDRA_CONTEXTS.get(CASSANDRA_CONTEXTS.size() - 1);
+    }
+
+    static Session session() {
+        return session;
     }
 
     static CodecRegistry codecRegistry() {
