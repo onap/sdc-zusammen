@@ -6,7 +6,7 @@
     <parent>
         <groupId>org.onap.sdc.zusammen.plugin</groupId>
         <artifactId>zusammen-state-store</artifactId>
-        <version>1.0.5-SNAPSHOT</version>
+        <version>1.0.5</version>
     </parent>
 
     <artifactId>zusammen-state-store-cassandra-plugin</artifactId>

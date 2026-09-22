@@ -21,7 +21,7 @@
     <parent>
         <artifactId>zusammen-commons-db</artifactId>
         <groupId>org.onap.sdc.zusammen</groupId>
-        <version>1.0.5-SNAPSHOT</version>
+        <version>1.0.5</version>
     </parent>
     <artifactId>zusammen-commons-db-api</artifactId>
     <packaging>jar</packaging>
