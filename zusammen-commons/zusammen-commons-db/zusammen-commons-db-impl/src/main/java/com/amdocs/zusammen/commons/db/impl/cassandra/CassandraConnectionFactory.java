@@ -24,10 +24,6 @@ import com.datastax.driver.core.policies.*;
 import com.datastax.driver.mapping.MappingManager;
 
 import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManagerFactory;
-import java.io.FileInputStream;
-import java.security.KeyStore;
-import java.security.SecureRandom;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -126,31 +122,13 @@ class CassandraConnectionFactory {
         Optional<String> truststorePassword = CassandraConfig.getTrustStorePassword();
 
         if (truststore.isPresent() && truststorePassword.isPresent()) {
-            SSLContext context = getSSLContext(truststore.get(), truststorePassword.get());
-
-            String[] css = new String[] {"TLS_RSA_WITH_AES_128_CBC_SHA"};
-            return Optional.of(
-                    RemoteEndpointAwareJdkSSLOptions.builder().withSSLContext(context).withCipherSuites(css).build());
+            // JdkSSLOptions substitutes SSLContext.getDefault() for a null context, which would
+            // swap the configured trust anchors for the JVM default trust store unnoticed - hence
+            // createFromTrustStore throws instead of handing back a null context.
+            SSLContext context = CassandraSslContextFactory
+                    .createFromTrustStore(truststore.get(), truststorePassword.get());
+            return Optional.of(RemoteEndpointAwareJdkSSLOptions.builder().withSSLContext(context).build());
         }
         return Optional.empty();
     }
-
-    private static SSLContext getSSLContext(String truststorePath, String truststorePassword) {
-        SSLContext ctx = null;
-        try (FileInputStream tsf = new FileInputStream(truststorePath)) {
-            ctx = SSLContext.getInstance("SSL");
-
-            KeyStore ts = KeyStore.getInstance("JKS");
-            ts.load(tsf, truststorePassword.toCharArray());
-            TrustManagerFactory tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
-            tmf.init(ts);
-
-            ctx.init(null, tmf.getTrustManagers(), new SecureRandom());
-        } catch (Exception e) {
-            LOGGER.error("Error while getting SSL context", e);
-        }
-        return ctx;
-    }
-
-
 }
