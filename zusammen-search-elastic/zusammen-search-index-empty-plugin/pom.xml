@@ -7,7 +7,7 @@
     <parent>
         <groupId>org.onap.sdc.zusammen.plugin</groupId>
         <artifactId>amdocs-zusammen-search-index</artifactId>
-        <version>1.0.4-SNAPSHOT</version>
+        <version>1.0.5-SNAPSHOT</version>
     </parent>
 
     <artifactId>zusammen-search-index-empty-plugin</artifactId>
