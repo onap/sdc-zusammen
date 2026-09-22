@@ -41,14 +41,6 @@
         <maven-javadoc-plugin.version>2.10.4</maven-javadoc-plugin.version>
         <datastax.cassandra.version>3.6.0</datastax.cassandra.version>
     </properties>
-    <profiles>
-        <profile>
-            <id>zusammen</id>
-            <activation>
-                <activeByDefault>true</activeByDefault>
-            </activation>
-        </profile>
-    </profiles>
     <modules>
         <module>zusammen-commons-db</module>
         <module>zusammen-commons-utils</module>

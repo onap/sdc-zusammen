@@ -41,6 +41,16 @@
         </dependency>
         <dependency>
             <groupId>org.onap.sdc.zusammen</groupId>
+            <artifactId>zusammen-datatypes</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.onap.sdc.zusammen</groupId>
+            <artifactId>zusammen-commons-health</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.onap.sdc.zusammen</groupId>
             <artifactId>zusammen-core-api</artifactId>
             <version>${project.version}</version>
         </dependency>
