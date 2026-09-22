@@ -54,64 +54,15 @@
 
     </modules>
 
-    <properties>
-        <java.source>1.8</java.source>
-        <java.target>1.8</java.target>
-        <maven-source-plugin.version>3.0.1</maven-source-plugin.version>
-        <maven-javadoc-plugin.version>2.10.4</maven-javadoc-plugin.version>
-    </properties>
     <build>
         <plugins>
-            <!-- ================================================== -->
-            <!-- Set the JDK compiler version.                      -->
-            <!-- ================================================== -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.3</version>
-                <inherited>true</inherited>
-                <configuration>
-                    <source>${java.source}</source>
-                    <target>${java.target}</target>
-                </configuration>
-            </plugin>
-             <!--  Sources  -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>
-                <version>${maven-source-plugin.version}</version>
-                <executions>
-                    <execution>
-                        <id>attach-sources</id>
-                        <goals>
-                            <goal>jar-no-fork</goal>
-                        </goals>
-                    </execution>
-                </executions>
             </plugin>
-            <!--  Javadocs  -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
-                <version>${maven-javadoc-plugin.version}</version>
-                <configuration>
-                    <tags>
-                        <tag>
-                            <name>implNote</name>
-                            <placement>tcm</placement>
-                            <head>Implementation note:</head>
-                        </tag>
-                    </tags>
-                    <additionalparam>-Xdoclint:none</additionalparam>
-                </configuration>
-                <executions>
-                    <execution>
-                        <id>attach-javadocs</id>
-                        <goals>
-                            <goal>jar</goal>
-                        </goals>
-                    </execution>
-                </executions>
             </plugin>
         </plugins>
     </build>
