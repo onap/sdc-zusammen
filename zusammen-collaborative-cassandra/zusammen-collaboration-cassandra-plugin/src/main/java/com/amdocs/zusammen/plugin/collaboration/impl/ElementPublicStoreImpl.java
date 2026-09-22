@@ -49,16 +49,17 @@ public class ElementPublicStoreImpl implements ElementPublicStore {
     ElementEntityContext publicContext =
         new ElementEntityContext(getSpaceName(context, Space.PUBLIC), elementContext);
 
-    ElementSynchronizationStateRepository elementSyncStateRepository =
-        getElementSyncStateRepository(context);
-    Map<Id, Id> ids = getElementRepository(context).listIds(context, publicContext);
+    Map<Id, Id> elementRevisionIds = getElementRepository(context).listIds(context, publicContext);
 
+    // listPerRevision, not list: list de-duplicates on SynchronizationStateEntity.equals, which
+    // compares the id alone, and here an element has a row per revision it was published in.
     Collection<SynchronizationStateEntity> synchronizationStateEntities = new HashSet<>();
-    for (Map.Entry<Id, Id> elementEntry : ids.entrySet()) {
-      Optional<SynchronizationStateEntity> synchronizationStateEntity =
-          elementSyncStateRepository.get(context, publicContext,
-              new SynchronizationStateEntity(elementEntry.getKey(), elementEntry.getValue()));
-      synchronizationStateEntity.ifPresent(synchronizationStateEntities::add);
+    for (SynchronizationStateEntity syncState : getElementSyncStateRepository(context)
+        .listPerRevision(context, publicContext)) {
+      Id revisionIdInVersion = elementRevisionIds.get(syncState.getId());
+      if (revisionIdInVersion != null && revisionIdInVersion.equals(syncState.getRevisionId())) {
+        synchronizationStateEntities.add(syncState);
+      }
     }
 
     return synchronizationStateEntities;
