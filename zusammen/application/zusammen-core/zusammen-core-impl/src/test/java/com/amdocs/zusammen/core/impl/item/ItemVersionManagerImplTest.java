@@ -56,9 +56,8 @@ import java.util.List;
 import static com.amdocs.zusammen.datatypes.item.SynchronizationStatus.MERGING;
 import static com.amdocs.zusammen.datatypes.item.SynchronizationStatus.OUT_OF_SYNC;
 import static com.amdocs.zusammen.datatypes.item.SynchronizationStatus.UP_TO_DATE;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.anyObject;
-import static org.mockito.Matchers.eq;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -82,11 +81,11 @@ public class ItemVersionManagerImplTest {
   @BeforeMethod
   public void setUp()  {
     MockitoAnnotations.initMocks(this);
-    when(itemVersionManagerImpl.getStateAdaptor(anyObject())).thenReturn(stateAdaptorMock);
-    when(itemVersionManagerImpl.getCollaborationAdaptor(anyObject()))
+    when(itemVersionManagerImpl.getStateAdaptor(any())).thenReturn(stateAdaptorMock);
+    when(itemVersionManagerImpl.getCollaborationAdaptor(any()))
         .thenReturn(collaborationAdaptorMock);
-    when(itemVersionManagerImpl.getItemManager(anyObject())).thenReturn(itemManagerMock);
-    when(itemVersionManagerImpl.getElementManager(anyObject())).thenReturn(elementManagerMock);
+    when(itemVersionManagerImpl.getItemManager(any())).thenReturn(itemManagerMock);
+    when(itemVersionManagerImpl.getElementManager(any())).thenReturn(elementManagerMock);
   }
 
   @Test
@@ -96,7 +95,7 @@ public class ItemVersionManagerImplTest {
         TestUtils.createItemVersion(new Id(), new Id(), "v1"),
         TestUtils.createItemVersion(new Id(), new Id(), "v2"),
         TestUtils.createItemVersion(new Id(), new Id(), "v3"));
-    doReturn(true).when(itemManagerMock).isExist(anyObject(), anyObject());
+    doReturn(true).when(itemManagerMock).isExist(any(), any());
     doReturn(new Response<>(retrievedVersions)).when(stateAdaptorMock)
         .listItemVersions(context, Space.PRIVATE, itemId);
 
@@ -156,17 +155,17 @@ public class ItemVersionManagerImplTest {
     data.setRelations(Arrays.asList(new Relation(), new Relation()));
 
     doReturn(new Response<>(Void.TYPE)).when(collaborationAdaptorMock).createItemVersion
-        (anyObject(), anyObject(), anyObject(), anyObject(), anyObject());
+        (any(), any(), any(), any(), any());
     doReturn(new Response<>(Void.TYPE)).when(stateAdaptorMock).createItemVersion
-        (anyObject(), anyObject(), anyObject(), anyObject(), anyObject(), anyObject(), anyObject());
+        (any(), any(), any(), any(), any(), any(), any());
     Id versionId = itemVersionManagerImpl.create(context, itemId, baseVersionId, data);
     Assert.assertNotNull(versionId);
 
     verify(collaborationAdaptorMock)
         .createItemVersion(context, itemId, baseVersionId, versionId, data);
     verify(stateAdaptorMock)
-        .createItemVersion(anyObject(), anyObject(), anyObject(), anyObject(), anyObject(),
-            anyObject(), anyObject());
+        .createItemVersion(any(), any(), any(), any(), any(),
+            any(), any());
   }
 
   @Test(expectedExceptions = ZusammenException.class)
@@ -208,17 +207,17 @@ public class ItemVersionManagerImplTest {
     data.setRelations(Arrays.asList(new Relation(), new Relation()));
 
     doReturn(new Response<>(Void.TYPE)).when(collaborationAdaptorMock).createItemVersion
-                                                                               (anyObject(), anyObject(), anyObject(), anyObject(), anyObject());
+                                                                               (any(), any(), any(), any(), any());
     doReturn(new Response<>(Void.TYPE)).when(stateAdaptorMock).createItemVersion
-                                                                       (anyObject(), anyObject(), anyObject(), anyObject(), anyObject(), anyObject(), anyObject());
+                                                                       (any(), any(), any(), any(), any(), any(), any());
     Id versionId = itemVersionManagerImpl.create(context, itemId, inputVersionId, baseVersionId, data);
     Assert.assertNotNull(versionId);
 
     verify(collaborationAdaptorMock)
             .createItemVersion(context, itemId, baseVersionId, versionId, data);
     verify(stateAdaptorMock)
-            .createItemVersion(anyObject(), anyObject(), anyObject(), anyObject(), anyObject(),
-                    anyObject(), anyObject());
+            .createItemVersion(any(), any(), any(), any(), any(),
+                    any(), any());
   }
 
   @Test(expectedExceptions = ZusammenException.class)
@@ -247,16 +246,16 @@ public class ItemVersionManagerImplTest {
         .when(collaborationAdaptorMock).updateItemVersion(context, itemId, versionId, data);
 
     doReturn(new Response<>(Void.TYPE)).when(stateAdaptorMock)
-        .updateItemVersion(anyObject(), anyObject(), anyObject(), anyObject(), anyObject(),
-            anyObject());
+        .updateItemVersion(any(), any(), any(), any(), any(),
+            any());
 
     itemVersionManagerImpl.update(context, itemId, versionId, data);
 
     verify(collaborationAdaptorMock).updateItemVersion(context, itemId, versionId, data);
 
     verify(stateAdaptorMock)
-        .updateItemVersion(anyObject(), anyObject(), anyObject(), anyObject(), anyObject(),
-            anyObject());
+        .updateItemVersion(any(), any(), any(), any(), any(),
+            any());
   }
 
   @Test(expectedExceptions = ZusammenException.class)

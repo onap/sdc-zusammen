@@ -22,9 +22,9 @@ import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
 
-import static org.mockito.Matchers.anyObject;
-import static org.mockito.Matchers.eq;
-import static org.mockito.Matchers.same;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -43,7 +43,7 @@ public class ElementStageStoreImplTest {
   @BeforeMethod
   public void setUp() throws Exception {
     MockitoAnnotations.initMocks(this);
-    when(elementStageStore.getElementStageRepository(anyObject()))
+    when(elementStageStore.getElementStageRepository(any()))
         .thenReturn(elementStageRepositoryMock);
   }
 
@@ -85,7 +85,7 @@ public class ElementStageStoreImplTest {
   @Test
   public void testResolveConflictWhenNotStaged() throws Exception {
     doReturn(Optional.empty())
-        .when(elementStageRepositoryMock).get(anyObject(), anyObject(), anyObject());
+        .when(elementStageRepositoryMock).get(any(), any(), any());
     elementStageStore
         .resolveConflict(context, elementContext, new ElementEntity(new Id()), Resolution.YOURS);
   }
@@ -96,7 +96,7 @@ public class ElementStageStoreImplTest {
     StageEntity<ElementEntity> stagedElement =
         new StageEntity<>(new ElementEntity(elementId), new Date());
     doReturn(Optional.of(stagedElement))
-        .when(elementStageRepositoryMock).get(anyObject(), anyObject(), anyObject());
+        .when(elementStageRepositoryMock).get(any(), any(), any());
     elementStageStore
         .resolveConflict(context, elementContext, new ElementEntity(elementId), Resolution.YOURS);
   }
@@ -110,7 +110,7 @@ public class ElementStageStoreImplTest {
     stagedElement.setConflicted(true);
 
     doReturn(Optional.of(stagedElement))
-        .when(elementStageRepositoryMock).get(anyObject(), anyObject(), anyObject());
+        .when(elementStageRepositoryMock).get(any(), any(), any());
 
     elementStageStore
         .resolveConflict(context, elementContext, new ElementEntity(elementId), Resolution.YOURS);
@@ -137,7 +137,7 @@ public class ElementStageStoreImplTest {
     stagedElement.setConflictDependents(relatedElements);
 
     doReturn(Optional.of(stagedElement))
-        .when(elementStageRepositoryMock).get(anyObject(), anyObject(), anyObject());
+        .when(elementStageRepositoryMock).get(any(), any(), any());
 
     elementStageStore
         .resolveConflict(context, elementContext, new ElementEntity(elementId), Resolution.YOURS);

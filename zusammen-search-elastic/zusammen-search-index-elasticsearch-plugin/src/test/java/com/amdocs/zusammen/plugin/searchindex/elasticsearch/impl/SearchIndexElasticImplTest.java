@@ -27,7 +27,7 @@ import org.mockito.MockitoAnnotations;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
-import static org.mockito.Matchers.anyObject;
+import static org.mockito.ArgumentMatchers.any;
 
 public class SearchIndexElasticImplTest {
 
@@ -42,10 +42,10 @@ public class SearchIndexElasticImplTest {
   @BeforeMethod(alwaysRun = true)
   public void injectDoubles() {
     MockitoAnnotations.initMocks(this);
-    Mockito.doNothing().when(elementSearchIndexMock).createElement(anyObject(), anyObject());
-    Mockito.doNothing().when(elementSearchIndexMock).updateElement(anyObject(), anyObject());
-    Mockito.doNothing().when(elementSearchIndexMock).deleteElement(anyObject(), anyObject());
-    Mockito.when(searchIndexServicesMock.search(anyObject(), anyObject())).thenReturn(new EsSearchResult());
+    Mockito.doNothing().when(elementSearchIndexMock).createElement(any(), any());
+    Mockito.doNothing().when(elementSearchIndexMock).updateElement(any(), any());
+    Mockito.doNothing().when(elementSearchIndexMock).deleteElement(any(), any());
+    Mockito.when(searchIndexServicesMock.search(any(), any())).thenReturn(new EsSearchResult());
   }
 
   @Test

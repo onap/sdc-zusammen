@@ -29,7 +29,7 @@ import org.mockito.Spy;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
-import static org.mockito.Matchers.anyObject;
+import static org.mockito.ArgumentMatchers.any;
 import static org.testng.Assert.*;
 import static org.mockito.Mockito.when;
 
@@ -48,7 +48,7 @@ public class KeepAliveStoreTest {
     @BeforeMethod
     public void setUp() throws Exception {
         MockitoAnnotations.initMocks(this);
-        when(stateStore.getKeepAliveDao(anyObject())).thenReturn(keepAliveDao);
+        when(stateStore.getKeepAliveDao(any())).thenReturn(keepAliveDao);
     }
 
     @Test

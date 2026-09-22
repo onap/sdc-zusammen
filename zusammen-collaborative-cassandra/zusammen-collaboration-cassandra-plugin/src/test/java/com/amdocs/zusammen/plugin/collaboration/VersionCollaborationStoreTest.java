@@ -17,7 +17,7 @@ public class VersionCollaborationStoreTest {/*
   @BeforeMethod
   public void setUp() throws Exception {
     MockitoAnnotations.initMocks(this);
-    when(versionCollaborationStore.getVersionDao(anyObject())).thenReturn(versionDaoMock);
+    when(versionCollaborationStore.getVersionDao(any())).thenReturn(versionDaoMock);
   }
 *//*
   @Test
@@ -179,8 +179,8 @@ public class VersionCollaborationStoreTest {/*
     Assert.assertEquals(v1.getData(), capturedVersion.getData());
     Assert.assertEquals(creationTime, capturedVersion.getCreationTime());
 *//*    verify(versionDaoMock)
-        .create(anyObject(), anyObject(), anyObject(), anyObject(), anyObject(), anyObject(),
-            anyObject());*//*
+        .create(any(), any(), any(), any(), any(), any(),
+            any());*//*
 
 *//*    if (baseId != null) {
       baseVersionElements.forEach(element ->
@@ -188,7 +188,7 @@ public class VersionCollaborationStoreTest {/*
               eq(new ElementEntityContext(spaceName, itemId, v1.getId())),
               eq(element)));
     } else {
-      verifyZeroInteractions(elementCollaborationStore);
+      verifyNoInteractions(elementCollaborationStore);
     }*//*
   }
 
@@ -208,7 +208,7 @@ public class VersionCollaborationStoreTest {/*
     *//*verify(versionDaoMock)
         .update(context, spaceName, itemId, retrievedVersion.getId(), updatedData, modificationTime);*//*
     verify(versionDaoMock)
-        .update(anyObject(), anyObject(), anyObject(), anyObject());
+        .update(any(), any(), any(), any());
 
   }
 

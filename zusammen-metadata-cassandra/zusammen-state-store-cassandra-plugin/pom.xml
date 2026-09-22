@@ -13,10 +13,6 @@
     <packaging>jar</packaging>
 
     <modelVersion>4.0.0</modelVersion>
-    <properties>
-        <testng.version>6.9.10</testng.version>
-        <mockito.version>1.10.19</mockito.version>
-    </properties>
     <dependencies>
         <dependency>
             <groupId>org.onap.sdc.zusammen</groupId>
@@ -48,13 +44,11 @@
             <groupId>org.testng</groupId>
             <artifactId>testng</artifactId>
             <scope>test</scope>
-            <version>6.9.10</version>
         </dependency>
         <dependency>
             <groupId>org.mockito</groupId>
-            <artifactId>mockito-all</artifactId>
+            <artifactId>mockito-core</artifactId>
             <scope>test</scope>
-            <version>1.10.19</version>
         </dependency>
     </dependencies>
      <build>

@@ -41,11 +41,11 @@ import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 
-import static org.mockito.Matchers.anyObject;
-import static org.mockito.Matchers.eq;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyZeroInteractions;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 public class VersionStateStoreTest {
@@ -65,8 +65,8 @@ public class VersionStateStoreTest {
   @BeforeMethod
   public void setUp() throws Exception {
     MockitoAnnotations.initMocks(this);
-    when(versionStateStore.getVersionDao(anyObject())).thenReturn(versionDaoMock);
-    when(versionStateStore.getElementRepository(anyObject())).thenReturn(elementRepositoryMock);
+    when(versionStateStore.getVersionDao(any())).thenReturn(versionDaoMock);
+    when(versionStateStore.getElementRepository(any())).thenReturn(elementRepositoryMock);
   }
 
   @Test
@@ -208,7 +208,7 @@ public class VersionStateStoreTest {
     /*verify(versionDaoMock)
         .create(context, spaceName, itemId, baseId, v1.getId(), v1.getData(), creationTime);*/
     verify(versionDaoMock)
-        .create(anyObject(),anyObject(),anyObject(),anyObject(),anyObject(),anyObject(),anyObject());
+        .create(any(),any(),any(),any(),any(),any(),any());
 
     if (baseId != null) {
       baseVersionElements.forEach(element ->
@@ -216,7 +216,7 @@ public class VersionStateStoreTest {
               eq(new ElementEntityContext(spaceName, itemId, v1.getId())),
               eq(element)));
     } else {
-      verifyZeroInteractions(elementRepositoryMock);
+      verifyNoInteractions(elementRepositoryMock);
     }
   }
 
@@ -236,7 +236,7 @@ public class VersionStateStoreTest {
     /*verify(versionDaoMock)
         .update(context, spaceName, itemId, retrievedVersion.getId(), updatedData, modificationTime);*/
     verify(versionDaoMock)
-        .update(anyObject(),anyObject(),anyObject(),anyObject(),anyObject(),anyObject());
+        .update(any(),any(),any(),any(),any(),any());
 
   }
 
