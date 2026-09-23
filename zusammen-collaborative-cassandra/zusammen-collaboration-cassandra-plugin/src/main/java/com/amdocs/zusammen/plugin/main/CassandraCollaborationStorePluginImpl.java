@@ -364,6 +364,18 @@ public class CassandraCollaborationStorePluginImpl implements CollaborationStore
   }
 
   @Override
+  public Response<Collection<CollaborationElement>> listElementTree(SessionContext context,
+                                                                    ElementContext elementContext,
+                                                                    Namespace namespace,
+                                                                    Id elementId, int depth) {
+    return new Response<>(elementPrivateStore.getTree(context, elementContext, elementId, depth)
+        .stream()
+        .map(elementEntity -> ZusammenPluginUtil
+            .convertToCollaborationElement(elementContext, elementEntity))
+        .collect(Collectors.toList()));
+  }
+
+  @Override
   public Response<CollaborationElement> getElement(SessionContext context,
                                                    ElementContext elementContext,
                                                    Namespace namespace, Id elementId) {

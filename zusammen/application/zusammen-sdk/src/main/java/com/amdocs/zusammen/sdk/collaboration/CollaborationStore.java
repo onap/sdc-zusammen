@@ -39,7 +39,12 @@ import com.amdocs.zusammen.sdk.collaboration.types.CollaborationMergeResult;
 import com.amdocs.zusammen.sdk.collaboration.types.CollaborationPublishResult;
 import com.amdocs.zusammen.sdk.health.IHealthCheck;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 public interface CollaborationStore extends IHealthCheck {
 
@@ -96,6 +101,47 @@ public interface CollaborationStore extends IHealthCheck {
 
   Response<CollaborationElement> getElement(SessionContext context, ElementContext elementContext,
                                             Namespace namespace, Id elementId);
+
+  /**
+   * The element followed by its descendants down to {@code depth} levels below it, level by level,
+   * each element once; empty when the element does not exist. This default walks
+   * {@link #getElement} and {@link #listElements}, one call per parent; a store that can read a
+   * level in fewer round trips should override it.
+   */
+  default Response<Collection<CollaborationElement>> listElementTree(SessionContext context,
+                                                                    ElementContext elementContext,
+                                                                    Namespace namespace,
+                                                                    Id elementId, int depth) {
+    Response<CollaborationElement> element = getElement(context, elementContext, namespace, elementId);
+    if (!element.isSuccessful()) {
+      return new Response<>(element.getReturnCode());
+    }
+    List<CollaborationElement> tree = new ArrayList<>();
+    if (element.getValue() == null) {
+      return new Response<>(tree);
+    }
+    tree.add(element.getValue());
+    Set<Id> reached = new HashSet<>(Collections.singleton(elementId));
+    List<CollaborationElement> level = Collections.singletonList(element.getValue());
+    for (int remaining = depth; remaining > 0 && !level.isEmpty(); remaining--) {
+      List<CollaborationElement> next = new ArrayList<>();
+      for (CollaborationElement parent : level) {
+        Response<Collection<CollaborationElement>> subElements =
+            listElements(context, elementContext, parent.getNamespace(), parent.getId());
+        if (!subElements.isSuccessful()) {
+          return new Response<>(subElements.getReturnCode());
+        }
+        for (CollaborationElement subElement : subElements.getValue()) {
+          if (reached.add(subElement.getId())) {
+            next.add(subElement);
+          }
+        }
+      }
+      tree.addAll(next);
+      level = next;
+    }
+    return new Response<>(tree);
+  }
 
   Response<CollaborationElementConflict> getElementConflict(SessionContext context,
                                                             ElementContext elementContext,

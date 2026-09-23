@@ -27,6 +27,7 @@ import com.amdocs.zusammen.plugin.dao.types.ElementEntity;
 import com.amdocs.zusammen.plugin.statestore.cassandra.dao.types.ElementEntityContext;
 import com.amdocs.zusammen.utils.fileutils.json.JsonUtil;
 import com.datastax.driver.core.ResultSet;
+import com.datastax.driver.core.ResultSetFuture;
 import com.datastax.driver.core.Row;
 import com.datastax.driver.core.Statement;
 import com.datastax.driver.mapping.annotations.Accessor;
@@ -36,8 +37,10 @@ import com.google.gson.reflect.TypeToken;
 import java.lang.reflect.Type;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -102,6 +105,44 @@ public class ElementRepositoryImpl implements ElementRepository {
                 elementContext.getVersionId().toString(), element.getId().toString(), revisionId).one();
 
         return row == null ? Optional.empty() : Optional.of(getElementEntity(element, row));
+    }
+
+    @Override
+    public Map<Id, ElementEntity> getAll(SessionContext context, ElementEntityContext elementContext,
+            Collection<Id> elementIds) {
+        Map<Id, ElementEntity> found = new LinkedHashMap<>();
+        Map<Id, ResultSetFuture> inFlight = new LinkedHashMap<>();
+        for (Id elementId : elementIds) {
+            if (found.containsKey(elementId) || inFlight.containsKey(elementId)) {
+                continue;
+            }
+            String revisionId = calculateElementRevisionId(context, elementContext, elementId);
+            if (revisionId == null) {
+                continue;
+            }
+            if (inFlight.size() == ElementWriteWindow.WINDOW_SIZE) {
+                settle(inFlight, found);
+            }
+            String space = elementContext.getSpace();
+            String itemId = elementContext.getItemId().toString();
+            String versionId = elementContext.getVersionId().toString();
+            ElementWriteWindow.awaitRow(space, itemId, versionId, elementId.toString(), revisionId);
+            Statement statement = getElementAccessor(context)
+                    .getStatement(space, itemId, versionId, elementId.toString(), revisionId);
+            inFlight.put(elementId, CassandraDaoUtils.getSession(context).executeAsync(statement));
+        }
+        settle(inFlight, found);
+        return found;
+    }
+
+    private static void settle(Map<Id, ResultSetFuture> inFlight, Map<Id, ElementEntity> found) {
+        inFlight.forEach((elementId, future) -> {
+            Row row = future.getUninterruptibly().one();
+            if (row != null) {
+                found.put(elementId, getElementEntity(new ElementEntity(elementId), row));
+            }
+        });
+        inFlight.clear();
     }
 
     @Override
@@ -503,10 +544,15 @@ public class ElementRepositoryImpl implements ElementRepository {
         @Query(DELETE)
         Statement deleteStatement(String space, String itemId, String versionId, String elementId, String revisionId);
 
-        @Query("SELECT parent_id, namespace, info, relations, data, searchable_data, visualization, "
-                       + "sub_element_ids,element_hash FROM element "
-                       + "WHERE space=? AND item_id=? AND version_id=? AND element_id=? AND revision_id=? ")
+        String GET = "SELECT parent_id, namespace, info, relations, data, searchable_data, visualization, "
+                + "sub_element_ids,element_hash FROM element "
+                + "WHERE space=? AND item_id=? AND version_id=? AND element_id=? AND revision_id=? ";
+
+        @Query(GET)
         ResultSet get(String space, String itemId, String versionId, String elementId, String revisionId);
+
+        @Query(GET)
+        Statement getStatement(String space, String itemId, String versionId, String elementId, String revisionId);
 
         @Query("SELECT parent_id, namespace, info, relations, sub_element_ids FROM element "
                        + "WHERE space=? AND item_id=? AND version_id=? AND element_id=? AND revision_id=? ")

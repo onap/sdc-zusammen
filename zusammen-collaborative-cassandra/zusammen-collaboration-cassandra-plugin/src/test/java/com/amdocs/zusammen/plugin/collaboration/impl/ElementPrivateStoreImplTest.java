@@ -44,11 +44,13 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.same;
@@ -581,6 +583,119 @@ public class ElementPrivateStoreImplTest {
     Assert.assertEquals(syncStateCaptor.getValue().getPublishTime(), publishTime);
     Assert.assertTrue(syncStateCaptor.getValue().isDirty());
     verifyNoInteractions(elementRepositoryMock);
+  }
+
+  @Test
+  public void testGetTreeReadsOneLevelPerRepositoryCall() throws Exception {
+    ElementEntity root = element("root", "a", "b");
+    ElementEntity a = element("a", "a1");
+    ElementEntity b = element("b");
+    ElementEntity a1 = element("a1");
+    stubElements(root);
+    stubGetAll(a, b, a1);
+
+    List<ElementEntity> tree =
+        elementPrivateStore.getTree(context, elementContext, root.getId(), Integer.MAX_VALUE);
+
+    Assert.assertEquals(ids(tree), Arrays.asList(new Id("root"), new Id("a"), new Id("b"), new Id("a1")));
+    verify(elementRepositoryMock, times(1)).get(same(context), any(), any());
+    verify(elementRepositoryMock, times(2)).getAll(same(context), any(), any());
+  }
+
+  @Test
+  public void testGetTreeStopsAtTheRequestedDepth() throws Exception {
+    ElementEntity root = element("root", "a");
+    ElementEntity a = element("a", "a1");
+    stubElements(root);
+    stubGetAll(a, element("a1"));
+
+    List<ElementEntity> tree = elementPrivateStore.getTree(context, elementContext, root.getId(), 1);
+
+    Assert.assertEquals(ids(tree), Arrays.asList(new Id("root"), new Id("a")));
+    verify(elementRepositoryMock, times(1)).getAll(same(context), any(), any());
+  }
+
+  @Test
+  public void testGetTreeAtDepthZeroReadsOnlyTheElement() throws Exception {
+    ElementEntity root = element("root", "a");
+    stubElements(root);
+
+    Assert.assertEquals(ids(elementPrivateStore.getTree(context, elementContext, root.getId(), 0)),
+        Collections.singletonList(new Id("root")));
+    verify(elementRepositoryMock, never()).getAll(any(), any(), any());
+  }
+
+  @Test
+  public void testGetTreeOfAMissingElementIsEmpty() throws Exception {
+    doReturn(Optional.empty()).when(elementRepositoryMock).get(any(), any(), any());
+
+    Assert.assertTrue(elementPrivateStore.getTree(context, elementContext, new Id("nope"), 3).isEmpty());
+  }
+
+  @Test(expectedExceptions = IllegalStateException.class,
+      expectedExceptionsMessageRegExp = ".*ghost.*sub element of element root.*")
+  public void testGetTreeWhenASubElementRowIsMissing() throws Exception {
+    stubElements(element("root", "ghost"));
+    stubGetAll();
+
+    elementPrivateStore.getTree(context, elementContext, new Id("root"), 1);
+  }
+
+  @Test
+  public void testGetTreeTerminatesWhenSubElementIdsPointBackUpTheTree() throws Exception {
+    ElementEntity root = element("root", "a");
+    ElementEntity a = element("a", "root", "a");
+    stubElements(root);
+    stubGetAll(a, root);
+
+    List<ElementEntity> tree =
+        elementPrivateStore.getTree(context, elementContext, root.getId(), Integer.MAX_VALUE);
+
+    Assert.assertEquals(ids(tree), Arrays.asList(new Id("root"), new Id("a")));
+  }
+
+  @Test
+  public void testGetTreeReadsThePrivateSpaceAtRevisionZero() throws Exception {
+    stubElements(element("root", "a"));
+    stubGetAll(element("a"));
+
+    elementPrivateStore.getTree(context, elementContext, new Id("root"), 1);
+
+    ArgumentCaptor<ElementEntityContext> contextCaptor =
+        ArgumentCaptor.forClass(ElementEntityContext.class);
+    verify(elementRepositoryMock).getAll(same(context), contextCaptor.capture(), any());
+    assertPrivateContext(contextCaptor.getValue(), Id.ZERO);
+  }
+
+  private static ElementEntity element(String id, String... subIds) {
+    ElementEntity element = new ElementEntity(new Id(id));
+    Set<Id> subs = new LinkedHashSet<>();
+    for (String subId : subIds) {
+      subs.add(new Id(subId));
+    }
+    element.setSubElementIds(subs);
+    return element;
+  }
+
+  private void stubGetAll(ElementEntity... stored) {
+    Map<Id, ElementEntity> storedById = new HashMap<>();
+    for (ElementEntity element : stored) {
+      storedById.put(element.getId(), element);
+    }
+    doAnswer(invocation -> {
+      Collection<Id> requested = invocation.getArgument(2);
+      Map<Id, ElementEntity> found = new LinkedHashMap<>();
+      requested.forEach(id -> {
+        if (storedById.containsKey(id)) {
+          found.put(id, storedById.get(id));
+        }
+      });
+      return found;
+    }).when(elementRepositoryMock).getAll(any(), any(), any());
+  }
+
+  private static List<Id> ids(List<ElementEntity> elements) {
+    return elements.stream().map(ElementEntity::getId).collect(Collectors.toList());
   }
 
   private void stubElements(ElementEntity... stored) {

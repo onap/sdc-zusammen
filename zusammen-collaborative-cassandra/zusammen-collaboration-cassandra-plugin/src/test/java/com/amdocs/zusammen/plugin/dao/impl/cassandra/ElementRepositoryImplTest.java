@@ -16,6 +16,7 @@
 
 package com.amdocs.zusammen.plugin.dao.impl.cassandra;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.never;
@@ -38,7 +39,9 @@ import com.amdocs.zusammen.plugin.dao.types.ElementEntity;
 import com.amdocs.zusammen.plugin.statestore.cassandra.dao.types.ElementEntityContext;
 import com.amdocs.zusammen.utils.fileutils.json.JsonUtil;
 import com.datastax.driver.core.ResultSet;
+import com.datastax.driver.core.ResultSetFuture;
 import com.datastax.driver.core.Row;
+import com.datastax.driver.core.Statement;
 import com.google.gson.reflect.TypeToken;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
@@ -53,6 +56,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
@@ -595,6 +599,107 @@ public class ElementRepositoryImplTest {
 
         Assert.assertFalse(
                 repository.getHash(context, elementContext(REVISION_ID), new ElementEntity(ELEMENT_ID)).isPresent());
+    }
+
+    @Test
+    public void testGetAllReadsEveryRowWithoutWaitingBetweenThemAndKeepsTheRequestedOrder() {
+        Statement first = Mockito.mock(Statement.class);
+        Statement second = Mockito.mock(Statement.class);
+        doReturn(first).when(elementAccessor).getStatement(SPACE, "item-1", "version-2", "sub-a", ZERO_REVISION);
+        doReturn(second).when(elementAccessor).getStatement(SPACE, "item-1", "version-2", "sub-b", ZERO_REVISION);
+        ResultSetFuture firstFuture = futureOf(fullElementRow());
+        ResultSetFuture secondFuture = futureOf(fullElementRow());
+        doReturn(firstFuture).when(CassandraAccessorSeam.session()).executeAsync(first);
+        doReturn(secondFuture).when(CassandraAccessorSeam.session()).executeAsync(second);
+
+        Map<Id, ElementEntity> found = repository.getAll(context, elementContext(REVISION_ID),
+                Arrays.asList(new Id("sub-a"), new Id("sub-b")));
+
+        Assert.assertEquals(new ArrayList<>(found.keySet()), Arrays.asList(new Id("sub-a"), new Id("sub-b")));
+        Assert.assertEquals(found.get(new Id("sub-a")).getId(), new Id("sub-a"));
+        InOrder order = Mockito.inOrder(CassandraAccessorSeam.session(), firstFuture, secondFuture);
+        order.verify(CassandraAccessorSeam.session()).executeAsync(first);
+        order.verify(CassandraAccessorSeam.session()).executeAsync(second);
+        order.verify(firstFuture).getUninterruptibly();
+        verify(elementAccessor, never()).get(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    public void testGetAllLeavesOutRowsThatAreMissing() {
+        Statement statement = Mockito.mock(Statement.class);
+        doReturn(statement).when(elementAccessor).getStatement(SPACE, "item-1", "version-2", "ghost", ZERO_REVISION);
+        doReturn(futureOf(null)).when(CassandraAccessorSeam.session()).executeAsync(statement);
+
+        Assert.assertTrue(repository.getAll(context, elementContext(REVISION_ID),
+                Collections.singletonList(new Id("ghost"))).isEmpty());
+    }
+
+    @Test
+    public void testGetAllInPublicSpaceSkipsElementsTheVersionDoesNotContain() {
+        givenVersionElements(PUBLIC_SPACE, "revision-3", versionElementsRow(Collections.singletonMap("sub-a", "rev-a")));
+        Statement statement = Mockito.mock(Statement.class);
+        doReturn(statement).when(elementAccessor).getStatement(PUBLIC_SPACE, "item-1", "version-2", "sub-a", "rev-a");
+        doReturn(futureOf(fullElementRow())).when(CassandraAccessorSeam.session()).executeAsync(statement);
+
+        Map<Id, ElementEntity> found = repository.getAll(context, publicContext(REVISION_ID),
+                Arrays.asList(new Id("sub-a"), new Id("not-in-version")));
+
+        Assert.assertEquals(found.keySet(), Collections.singleton(new Id("sub-a")));
+        verify(elementAccessor, never())
+                .getStatement(eq(PUBLIC_SPACE), any(), any(), eq("not-in-version"), any());
+    }
+
+    @Test
+    public void testGetAllSendsNoMoreThanTheWindowBeforeWaiting() {
+        List<Id> ids = new ArrayList<>();
+        List<Statement> statements = new ArrayList<>();
+        List<ResultSetFuture> futures = new ArrayList<>();
+        for (int i = 0; i < ElementWriteWindow.WINDOW_SIZE + 1; i++) {
+            String id = "sub-" + i;
+            ids.add(new Id(id));
+            Statement statement = Mockito.mock(Statement.class);
+            statements.add(statement);
+            doReturn(statement).when(elementAccessor).getStatement(SPACE, "item-1", "version-2", id, ZERO_REVISION);
+            ResultSetFuture future = futureOf(fullElementRow());
+            futures.add(future);
+            doReturn(future).when(CassandraAccessorSeam.session()).executeAsync(statement);
+        }
+
+        repository.getAll(context, elementContext(REVISION_ID), ids);
+
+        InOrder order = Mockito.inOrder(futures.get(0), CassandraAccessorSeam.session());
+        order.verify(futures.get(0)).getUninterruptibly();
+        order.verify(CassandraAccessorSeam.session()).executeAsync(statements.get(ElementWriteWindow.WINDOW_SIZE));
+    }
+
+    @Test
+    public void testGetAllWaitsForAnOutstandingWriteOfTheSameRowBeforeReadingIt() {
+        // An open publish window with a write to sub-a still pending; the read must drain it first.
+        ElementWriteWindow.open();
+        try {
+            Statement write = Mockito.mock(Statement.class);
+            ResultSetFuture pendingWrite = Mockito.mock(ResultSetFuture.class);
+            doReturn(pendingWrite).when(CassandraAccessorSeam.session()).executeAsync(write);
+            ElementWriteWindow.submit(context, SPACE, "item-1", "version-2", "sub-a", ZERO_REVISION, () -> write);
+            Statement read = Mockito.mock(Statement.class);
+            doReturn(read).when(elementAccessor).getStatement(SPACE, "item-1", "version-2", "sub-a", ZERO_REVISION);
+            doReturn(futureOf(fullElementRow())).when(CassandraAccessorSeam.session()).executeAsync(read);
+
+            repository.getAll(context, elementContext(REVISION_ID), Collections.singletonList(new Id("sub-a")));
+
+            InOrder order = Mockito.inOrder(pendingWrite, CassandraAccessorSeam.session());
+            order.verify(pendingWrite).getUninterruptibly();
+            order.verify(CassandraAccessorSeam.session()).executeAsync(read);
+        } finally {
+            ElementWriteWindow.discard();
+        }
+    }
+
+    private static ResultSetFuture futureOf(Row row) {
+        ResultSetFuture future = Mockito.mock(ResultSetFuture.class);
+        ResultSet resultSet = resultSetOf(row);
+        when(future.getUninterruptibly()).thenReturn(resultSet);
+        return future;
     }
 
     private void givenElement(String space, String elementId, String revisionId, Row row) {

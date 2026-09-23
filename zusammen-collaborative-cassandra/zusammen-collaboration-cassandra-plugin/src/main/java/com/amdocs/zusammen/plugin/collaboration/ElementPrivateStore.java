@@ -8,6 +8,7 @@ import com.amdocs.zusammen.plugin.dao.types.SynchronizationStateEntity;
 
 import java.util.Collection;
 import java.util.Date;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -19,6 +20,13 @@ public interface ElementPrivateStore extends ElementStore {
 
   Collection<ElementEntity> listSubs(SessionContext context, ElementContext elementContext,
                                      Id elementId);
+
+  /**
+   * The element followed by its descendants down to {@code depth} levels below it, level by level,
+   * each element once. Empty when the element does not exist.
+   */
+  List<ElementEntity> getTree(SessionContext context, ElementContext elementContext, Id elementId,
+                              int depth);
 
   Optional<SynchronizationStateEntity> getSynchronizationState(SessionContext context,
                                                                ElementContext elementContext,
