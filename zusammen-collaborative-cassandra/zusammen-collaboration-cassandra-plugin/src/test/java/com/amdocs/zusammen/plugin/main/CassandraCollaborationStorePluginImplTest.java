@@ -86,6 +86,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -718,6 +719,23 @@ public class CassandraCollaborationStorePluginImplTest {
                 .listElements(context, elementContext, Namespace.ROOT_NAMESPACE, ELEMENT_ID);
 
         Assert.assertTrue(response.getValue().isEmpty());
+    }
+
+    @Test
+    public void testListElementTreeUsesThePrivateStoreTreeRead() {
+        ElementContext elementContext = new ElementContext(ITEM_ID, VERSION_ID);
+        ElementEntity root = elementEntity(ELEMENT_ID, PARENT_ID, "root");
+        ElementEntity sub = elementEntity(OTHER_ELEMENT_ID, ELEMENT_ID, "sub");
+        when(elementPrivateStore.getTree(context, elementContext, ELEMENT_ID, 3))
+                .thenReturn(Arrays.asList(root, sub));
+
+        Response<Collection<CollaborationElement>> response =
+                plugin.listElementTree(context, elementContext, Namespace.ROOT_NAMESPACE, ELEMENT_ID, 3);
+
+        Assert.assertEquals(response.getValue().stream().map(CollaborationElement::getId)
+                .collect(Collectors.toList()), Arrays.asList(ELEMENT_ID, OTHER_ELEMENT_ID));
+        verify(elementPrivateStore, never()).listSubs(any(), any(), any());
+        verify(elementPrivateStore, never()).get(any(), any(), any());
     }
 
     @Test

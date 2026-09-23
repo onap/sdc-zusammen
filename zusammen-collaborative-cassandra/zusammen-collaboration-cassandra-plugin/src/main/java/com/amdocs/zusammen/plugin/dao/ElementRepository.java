@@ -5,6 +5,7 @@ import com.amdocs.zusammen.datatypes.SessionContext;
 import com.amdocs.zusammen.plugin.statestore.cassandra.dao.types.ElementEntityContext;
 import com.amdocs.zusammen.plugin.dao.types.ElementEntity;
 
+import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
 
@@ -30,6 +31,13 @@ public interface ElementRepository {
 
   Optional<ElementEntity> get(SessionContext context, ElementEntityContext elementContext,
                               ElementEntity element);
+
+  /**
+   * Reads several elements of one space and version at once. Ids without a row are left out of the
+   * result rather than failing it; the map iterates in the order the ids were given.
+   */
+  Map<Id, ElementEntity> getAll(SessionContext context, ElementEntityContext elementContext,
+                                Collection<Id> elementIds);
 
   Optional<ElementEntity> getDescriptor(SessionContext context, ElementEntityContext elementContext,
                                         ElementEntity element);

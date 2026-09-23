@@ -15,7 +15,10 @@ import com.amdocs.zusammen.plugin.statestore.cassandra.dao.types.ElementEntityCo
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -83,6 +86,54 @@ public class ElementPrivateStoreImpl implements ElementPrivateStore {
                   privateContext.getVersionId()))));
     }
     return subElements;
+  }
+
+  @Override
+  public List<ElementEntity> getTree(SessionContext context, ElementContext elementContext,
+                                     Id elementId, int depth) {
+    ElementRepository elementRepository = getElementRepository(context);
+    ElementEntityContext privateContext =
+        new ElementEntityContext(getPrivateSpaceName(context), elementContext);
+    privateContext.setRevisionId(REVISION_ID);
+
+    Optional<ElementEntity> element =
+        elementRepository.get(context, privateContext, new ElementEntity(elementId));
+    if (!element.isPresent()) {
+      return new ArrayList<>();
+    }
+
+    List<ElementEntity> tree = new ArrayList<>();
+    tree.add(element.get());
+    Set<Id> reached = new HashSet<>(Collections.singleton(elementId));
+    List<ElementEntity> level = Collections.singletonList(element.get());
+    for (int remaining = depth; remaining > 0 && !level.isEmpty(); remaining--) {
+      Map<Id, Id> parentBySubId = new LinkedHashMap<>();
+      for (ElementEntity parent : level) {
+        for (Id subElementId : parent.getSubElementIds()) {
+          if (reached.add(subElementId)) {
+            parentBySubId.put(subElementId, parent.getId());
+          }
+        }
+      }
+      if (parentBySubId.isEmpty()) {
+        break;
+      }
+      Map<Id, ElementEntity> found =
+          elementRepository.getAll(context, privateContext, parentBySubId.keySet());
+      List<ElementEntity> next = new ArrayList<>(parentBySubId.size());
+      for (Map.Entry<Id, Id> entry : parentBySubId.entrySet()) {
+        ElementEntity subElement = found.get(entry.getKey());
+        if (subElement == null) {
+          throw new IllegalStateException(String.format(SUB_ELEMENT_NOT_EXIST_ERROR,
+              entry.getKey(), entry.getValue().getValue(), privateContext.getSpace(),
+              privateContext.getItemId(), privateContext.getVersionId()));
+        }
+        next.add(subElement);
+      }
+      tree.addAll(next);
+      level = next;
+    }
+    return tree;
   }
 
   @Override
