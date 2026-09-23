@@ -36,11 +36,15 @@
             <artifactId>testng</artifactId>
             <scope>test</scope>
         </dependency>
-        <!--dependency>
+        <!-- TestNG calls LoggerFactory at test runtime, and the root pom excludes the slf4j-api
+             2.0.16 it would otherwise bring. Nothing else puts slf4j on this module's classpath,
+             so it declares the 1.7.10 the rest of the fork resolves. -->
+        <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
             <version>1.7.10</version>
-        </dependency-->
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <url>http://maven.apache.org</url>

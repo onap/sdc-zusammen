@@ -35,6 +35,14 @@
             <artifactId>mockito-core</artifactId>
             <scope>test</scope>
         </dependency>
+        <!-- Same reason as in zusammen-commons-utils: TestNG needs slf4j at test runtime, and
+             zusammen-commons-utils carries it at test scope, which does not reach here. -->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>1.7.10</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <artifactId>zusammen-commons-configuration</artifactId>
