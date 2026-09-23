@@ -20,28 +20,28 @@
 # TOOLCHAIN NOTES -- every override below was established empirically by
 # building the imported tree; none is cargo-culted from the JJB job:
 #
-#   java_version: '11'
-#     Mandatory, and must be explicit. The reusable workflow otherwise
-#     auto-detects and falls back to 21. The vendored mockito-all 1.10.19
-#     bundles cglib, which calls setAccessible on ClassLoader.defineClass;
-#     JDK 16 made strong encapsulation deny-by-default, so that throws
-#     InaccessibleObjectException in a static initialiser. Every Mockito
-#     test class then fails its @BeforeMethod and TestNG SKIPS the rest:
-#     8 of 79 tests execute on JDK 17/21 versus 79 of 79 on JDK 11.
-#     The boundary is JDK 16, not 21.
+#   java_version: '21'
+#     Still explicit rather than left to the reusable workflow's
+#     auto-detection. The tree was pinned to 11 because gson 2.7 called
+#     setAccessible on the private Collections$EmptyList constructor,
+#     which JDK 16 denies under strong encapsulation; gson 2.14 does not,
+#     and the suite passes on 11, 21 and 25 alike with no --add-opens.
+#     java.source/java.target stay at 1.8 so the published bytecode floor
+#     does not move under sdc/onboarding, which is what produces the
+#     'source value 8 is obsolete' warnings on a JDK this new.
 #
 #   run_jacoco: false
-#     Coverage itself comes from the project's own jacoco-maven-plugin
-#     0.8.12, which the module POMs bind as prepare-agent plus a report
-#     execution on the test phase, so every module with tests writes its
-#     own target/jacoco.exec and target/site/jacoco. This input drives a
+#     Coverage itself comes from the project's own jacoco-maven-plugin,
+#     which the module POMs bind as prepare-agent plus a report execution
+#     on the test phase, so every module with tests writes its own
+#     target/jacoco.exec and target/site/jacoco. This input drives a
 #     different layer: set true, maven-build-action redirects the whole
 #     reactor at one shared execution file and adds an aggregate
 #     jacoco:report and coverage-badge pass over it. That aggregation is
 #     what stays off; where the data lands remains the POMs' business.
-#     Do not pair it with -Djacoco.skip -- 0.8.12 honours that property,
-#     so the agent never attaches and the lane still goes green on all
-#     147 tests while writing no execution data at all.
+#     Do not pair it with -Djacoco.skip -- the plugin honours that
+#     property, so the agent never attaches and the lane still goes green
+#     on every test while writing no execution data at all.
 #
 #   -Dmaven.javadoc.skip=true
 #     detectJavaApiLink defaults on, so building javadoc reaches out to
@@ -177,11 +177,11 @@ jobs:
       # gerrit_url falls back to the GERRIT_URL repository variable.
       #
       # See TOOLCHAIN NOTES above; each value is load-bearing.
-      java_version: '11'
+      java_version: '21'
       mvn_version: '3.9.11'
       run_jacoco: false
       mvn_params: '-Dmaven.javadoc.skip=true'
-      # All 1734 tests pass on JDK 11, so the lane gates on them.
+      # All 1734 tests pass on JDK 21, so the lane gates on them.
       test_permit_fail: false
       # Audit, do not block. The 18 findings this was opened for -- one
       # critical -- sat in netty 4.0.56.Final and guava 19.0, both
