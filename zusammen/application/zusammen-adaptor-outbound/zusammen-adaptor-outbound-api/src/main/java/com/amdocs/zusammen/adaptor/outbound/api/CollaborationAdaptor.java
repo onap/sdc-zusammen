@@ -95,6 +95,10 @@ public interface CollaborationAdaptor {
   Response<CoreElement> getElement(SessionContext context, ElementContext elementContext,
                                    Namespace namespace, Id elementId);
 
+  Response<Collection<CoreElement>> listElementTree(SessionContext context,
+                                                    ElementContext elementContext,
+                                                    Namespace namespace, Id elementId, int depth);
+
   Response<CoreElementConflict> getElementConflict(SessionContext context,
                                                    ElementContext elementContext,
                                                    Namespace namespace, Id elementId);

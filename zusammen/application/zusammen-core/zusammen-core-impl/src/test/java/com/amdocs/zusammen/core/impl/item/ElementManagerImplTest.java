@@ -64,6 +64,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.never;
@@ -272,6 +273,56 @@ public class ElementManagerImplTest {
     CoreElement element = elementManager.get(context, elementContext, elementId);
 
     Assert.assertEquals(element, retrievedCoreElement);
+  }
+
+  @Test
+  public void testGetTreeAssemblesTheCollaborationRead() throws Exception {
+    SessionContext context = TestUtils.createSessionContext(USER, "test");
+    Id itemId = new Id();
+    Id versionId = new Id();
+    Id elementId = new Id("root");
+    ElementContext elementContext = new ElementContext(itemId, versionId);
+    Namespace namespace = Namespace.ROOT_NAMESPACE;
+    doReturn(new Response<>(namespace)).when(stateAdaptorMock).getNamespace(context, itemId, elementId);
+
+    CoreElement root = new CoreElement();
+    root.setId(elementId);
+    CoreElement subStub = new CoreElement();
+    subStub.setId(new Id("sub"));
+    root.setSubElements(new ArrayList<>(Collections.singletonList(subStub)));
+    CoreElement sub = new CoreElement();
+    sub.setId(new Id("sub"));
+    sub.setSubElements(new ArrayList<>());
+    doReturn(new Response<>(Arrays.asList(root, sub))).when(collaborationAdaptorMock)
+        .listElementTree(context, elementContext, namespace, elementId, 1);
+
+    CoreElement tree = elementManager.getTree(context, elementContext, elementId, 1);
+
+    Assert.assertSame(tree, root);
+    Assert.assertSame(tree.getSubElements().iterator().next(), sub);
+  }
+
+  @Test
+  public void testGetTreeOfAnElementWithoutNamespaceIsNull() throws Exception {
+    SessionContext context = TestUtils.createSessionContext(USER, "test");
+    Id itemId = new Id();
+    Id elementId = new Id();
+    doReturn(new Response<>((Namespace) null)).when(stateAdaptorMock).getNamespace(context, itemId, elementId);
+
+    Assert.assertNull(elementManager.getTree(context, new ElementContext(itemId, new Id()), elementId, 2));
+    verify(collaborationAdaptorMock, never()).listElementTree(any(), any(), any(), any(), anyInt());
+  }
+
+  @Test(expectedExceptions = IllegalArgumentException.class)
+  public void testGetTreeRejectsANegativeDepth() throws Exception {
+    elementManager.getTree(TestUtils.createSessionContext(USER, "test"),
+        new ElementContext(new Id(), new Id()), new Id(), -1);
+  }
+
+  @Test(expectedExceptions = IllegalArgumentException.class)
+  public void testGetTreeRejectsANullElementId() throws Exception {
+    elementManager.getTree(TestUtils.createSessionContext(USER, "test"),
+        new ElementContext(new Id(), new Id()), null, 1);
   }
 
   private CoreElementInfo createCoreElementInfo(Id id, Id parentId, Namespace parentNamespace) {

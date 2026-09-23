@@ -583,6 +583,31 @@ public class CollaborationAdaptorImpl implements CollaborationAdaptor {
   }
 
   @Override
+  public Response<Collection<CoreElement>> listElementTree(SessionContext context,
+                                                           ElementContext elementContext,
+                                                           Namespace namespace, Id elementId,
+                                                           int depth) {
+    Response<Collection<CollaborationElement>> collaborationResponse;
+    try {
+      collaborationResponse = getCollaborationStore(context)
+          .listElementTree(context, elementContext, namespace, elementId, depth);
+    } catch (RuntimeException re) {
+      ReturnCode returnCode =
+          new ReturnCode(ErrorCode.MD_ELEMENT_GET, Module.ZCSM, null,
+              new ReturnCode(ErrorCode.CL_ELEMENT_GET, Module.ZCSP, re.getMessage(), null));
+      throw new ZusammenException(returnCode);
+    }
+    if (!collaborationResponse.isSuccessful()) {
+      ReturnCode returnCode = new ReturnCode(ErrorCode.MD_ELEMENT_GET, Module.ZCSM, null,
+          collaborationResponse.getReturnCode());
+      throw new ZusammenException(returnCode);
+    }
+    return new Response<>(collaborationResponse.getValue().stream()
+        .map(CollaborationElementConvertor::convertToCoreElement)
+        .collect(Collectors.toList()));
+  }
+
+  @Override
   public Response<CoreElementConflict> getElementConflict(SessionContext context,
                                                           ElementContext elementContext,
                                                           Namespace namespace, Id elementId) {

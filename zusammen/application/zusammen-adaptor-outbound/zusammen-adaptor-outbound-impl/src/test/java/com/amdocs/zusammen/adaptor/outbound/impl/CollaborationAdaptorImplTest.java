@@ -27,6 +27,7 @@ import static com.amdocs.zusammen.adaptor.outbound.impl.OutboundTestSupport.stre
 import static com.amdocs.zusammen.adaptor.outbound.impl.OutboundTestSupport.successfulResponse;
 import static com.amdocs.zusammen.adaptor.outbound.impl.OutboundTestSupport.text;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.same;
 
@@ -83,6 +84,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class CollaborationAdaptorImplTest {
 
@@ -467,6 +469,24 @@ public class CollaborationAdaptorImplTest {
     }
 
     @Test
+    public void testListElementTreeConvertsEveryElement() {
+        CollaborationElement root = collaborationElement("root");
+        CollaborationElement sub = collaborationElement("sub");
+        Mockito.when(collaborationStore.listElementTree(any(), any(), any(), any(), anyInt()))
+                .thenReturn(successfulResponse(Arrays.asList(root, sub)));
+
+        Response<Collection<CoreElement>> response =
+                adaptor.listElementTree(CONTEXT, ELEMENT_CONTEXT, Namespace.ROOT_NAMESPACE,
+                        ELEMENT_ID, 2);
+
+        Mockito.verify(collaborationStore).listElementTree(same(CONTEXT), eq(ELEMENT_CONTEXT),
+                same(Namespace.ROOT_NAMESPACE), eq(ELEMENT_ID), eq(2));
+        Assert.assertEquals(
+                response.getValue().stream().map(CoreElement::getId).collect(Collectors.toList()),
+                Arrays.asList(new Id("root"), new Id("sub")));
+    }
+
+    @Test
     public void testGetElementConflictConvertsBothSidesOfTheConflict() {
         CollaborationElementConflict conflict = new CollaborationElementConflict();
         conflict.setLocalElement(collaborationElement("local"));
@@ -750,6 +770,11 @@ public class CollaborationAdaptorImplTest {
                 method("getElement", s -> s.getElement(any(), any(), any(), any()),
                         a -> a.getElement(CONTEXT, ELEMENT_CONTEXT, Namespace.ROOT_NAMESPACE,
                                 ELEMENT_ID),
+                        ErrorCode.MD_ELEMENT_GET, ErrorCode.CL_ELEMENT_GET),
+                method("listElementTree",
+                        s -> s.listElementTree(any(), any(), any(), any(), anyInt()),
+                        a -> a.listElementTree(CONTEXT, ELEMENT_CONTEXT, Namespace.ROOT_NAMESPACE,
+                                ELEMENT_ID, 1),
                         ErrorCode.MD_ELEMENT_GET, ErrorCode.CL_ELEMENT_GET),
                 method("getElementConflict", s -> s.getElementConflict(any(), any(), any(), any()),
                         a -> a.getElementConflict(CONTEXT, ELEMENT_CONTEXT,

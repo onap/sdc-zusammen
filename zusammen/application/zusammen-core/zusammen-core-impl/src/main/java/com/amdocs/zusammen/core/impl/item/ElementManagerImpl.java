@@ -138,6 +138,26 @@ public class ElementManagerImpl implements ElementManager {
   }
 
   @Override
+  public CoreElement getTree(SessionContext context, ElementContext elementContext,
+                             Id elementId, int depth) {
+    if (elementId == null) {
+      throw new IllegalArgumentException("An element subtree read needs an element id");
+    }
+    if (depth < 0) {
+      throw new IllegalArgumentException("An element subtree depth cannot be negative: " + depth);
+    }
+    Namespace namespace =
+        getValidatedNamespace(context, elementContext, elementId, ErrorCode.ZU_ELEMENT_GET);
+    if (namespace == null) {
+      return null;
+    }
+    Response<Collection<CoreElement>> response = getCollaborationAdaptor(context)
+        .listElementTree(context, elementContext, namespace, elementId, depth);
+    ValidationUtil.validateResponse(response, logger, ErrorCode.ZU_ELEMENT_GET);
+    return ElementTreeAssembler.assemble(elementId, response.getValue());
+  }
+
+  @Override
   public CoreElementConflict getConflict(SessionContext context, ElementContext elementContext,
                                          Id elementId) {
     Namespace namespace = getValidatedNamespace(context, elementContext, elementId,
