@@ -44,11 +44,11 @@
 #     147 tests while writing no execution data at all.
 #
 #   -Dmaven.javadoc.skip=true
-#     maven-javadoc-plugin 2.10.4 resolves detectJavaApiLink over plain
-#     HTTP to docs.oracle.com. Javadoc itself succeeds on every JDK
-#     tested, so this is not a correctness fix: it removes an egress
-#     dependency the verify lane has no need of, and with it the risk of
-#     a stall behind harden-runner's block policy.
+#     detectJavaApiLink defaults on, so building javadoc reaches out to
+#     docs.oracle.com. Javadoc itself succeeds on every JDK tested, so
+#     this is not a correctness fix: it removes an egress dependency the
+#     verify lane has no need of, and with it the risk of a stall behind
+#     harden-runner's block policy.
 #
 #   mvn_version: '3.9.11'
 #     Pinned rather than left to the action default, which happens to be
