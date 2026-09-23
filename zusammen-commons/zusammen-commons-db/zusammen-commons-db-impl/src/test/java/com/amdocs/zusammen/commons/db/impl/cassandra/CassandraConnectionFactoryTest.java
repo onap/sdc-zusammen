@@ -21,6 +21,8 @@ import com.datastax.driver.core.Authenticator;
 import com.datastax.driver.core.CloseFuture;
 import com.datastax.driver.core.Cluster;
 import com.datastax.driver.core.ConsistencyLevel;
+import com.datastax.driver.core.EndPoint;
+import com.datastax.driver.core.ExtendedAuthProvider;
 import com.datastax.driver.core.JdkSSLOptions;
 import com.datastax.driver.core.PlainTextAuthProvider;
 import com.datastax.driver.core.ProtocolOptions;
@@ -172,7 +174,7 @@ public class CassandraConnectionFactoryTest {
 
         AuthProvider authProvider = cluster.getConfiguration().getProtocolOptions().getAuthProvider();
         Assert.assertTrue(authProvider instanceof PlainTextAuthProvider);
-        Assert.assertEquals(plainTextCredentials(authProvider),
+        Assert.assertEquals(plainTextCredentials((ExtendedAuthProvider) authProvider),
                 Arrays.asList("zusammen_user", "s3cret"));
     }
 
@@ -362,10 +364,10 @@ public class CassandraConnectionFactoryTest {
         return addresses;
     }
 
-    private static List<String> plainTextCredentials(AuthProvider authProvider) {
+    private static List<String> plainTextCredentials(ExtendedAuthProvider authProvider) {
+        EndPoint endPoint = () -> new InetSocketAddress("127.0.0.1", ProtocolOptions.DEFAULT_PORT);
         Authenticator authenticator = authProvider.newAuthenticator(
-                new InetSocketAddress("127.0.0.1", ProtocolOptions.DEFAULT_PORT),
-                "org.apache.cassandra.auth.PasswordAuthenticator");
+                endPoint, "org.apache.cassandra.auth.PasswordAuthenticator");
         // SASL PLAIN initial response: a zero byte, the user name, a zero byte, the password.
         String[] parts = new String(authenticator.initialResponse(), StandardCharsets.UTF_8)
                 .split("\u0000");
