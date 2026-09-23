@@ -17,12 +17,14 @@
 package com.amdocs.zusammen.commons.db.impl.cassandra;
 
 import com.datastax.driver.core.Cluster;
+import com.datastax.driver.core.EndPoint;
 import com.datastax.driver.mapping.MappingManager;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.InetSocketAddress;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -100,7 +102,11 @@ final class ConnectionFactoryStatics {
             Object clusterManager = manager.get(cluster);
             Field contactPoints = clusterManager.getClass().getDeclaredField("contactPoints");
             contactPoints.setAccessible(true);
-            return (List<InetSocketAddress>) contactPoints.get(clusterManager);
+            List<InetSocketAddress> addresses = new ArrayList<>();
+            for (EndPoint contactPoint : (List<EndPoint>) contactPoints.get(clusterManager)) {
+                addresses.add(contactPoint.resolve());
+            }
+            return addresses;
         } catch (ReflectiveOperationException e) {
             throw new IllegalStateException(e);
         }
