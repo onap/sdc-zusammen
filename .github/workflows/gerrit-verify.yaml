@@ -20,35 +20,35 @@
 # TOOLCHAIN NOTES -- every override below was established empirically by
 # building the imported tree; none is cargo-culted from the JJB job:
 #
-#   java_version: '11'
-#     Mandatory, and must be explicit. The reusable workflow otherwise
-#     auto-detects and falls back to 21. The vendored mockito-all 1.10.19
-#     bundles cglib, which calls setAccessible on ClassLoader.defineClass;
-#     JDK 16 made strong encapsulation deny-by-default, so that throws
-#     InaccessibleObjectException in a static initialiser. Every Mockito
-#     test class then fails its @BeforeMethod and TestNG SKIPS the rest:
-#     8 of 79 tests execute on JDK 17/21 versus 79 of 79 on JDK 11.
-#     The boundary is JDK 16, not 21.
+#   java_version: '21'
+#     Still explicit rather than left to the reusable workflow's
+#     auto-detection. The tree was pinned to 11 because gson 2.7 called
+#     setAccessible on the private Collections$EmptyList constructor,
+#     which JDK 16 denies under strong encapsulation; gson 2.14 does not,
+#     and the suite passes on 11, 21 and 25 alike with no --add-opens.
+#     java.source/java.target stay at 1.8 so the published bytecode floor
+#     does not move under sdc/onboarding, which is what produces the
+#     'source value 8 is obsolete' warnings on a JDK this new.
 #
 #   run_jacoco: false
-#     Coverage itself comes from the project's own jacoco-maven-plugin
-#     0.8.12, which the module POMs bind as prepare-agent plus a report
-#     execution on the test phase, so every module with tests writes its
-#     own target/jacoco.exec and target/site/jacoco. This input drives a
+#     Coverage itself comes from the project's own jacoco-maven-plugin,
+#     which the module POMs bind as prepare-agent plus a report execution
+#     on the test phase, so every module with tests writes its own
+#     target/jacoco.exec and target/site/jacoco. This input drives a
 #     different layer: set true, maven-build-action redirects the whole
 #     reactor at one shared execution file and adds an aggregate
 #     jacoco:report and coverage-badge pass over it. That aggregation is
 #     what stays off; where the data lands remains the POMs' business.
-#     Do not pair it with -Djacoco.skip -- 0.8.12 honours that property,
-#     so the agent never attaches and the lane still goes green on all
-#     147 tests while writing no execution data at all.
+#     Do not pair it with -Djacoco.skip -- the plugin honours that
+#     property, so the agent never attaches and the lane still goes green
+#     on every test while writing no execution data at all.
 #
 #   -Dmaven.javadoc.skip=true
-#     maven-javadoc-plugin 2.10.4 resolves detectJavaApiLink over plain
-#     HTTP to docs.oracle.com. Javadoc itself succeeds on every JDK
-#     tested, so this is not a correctness fix: it removes an egress
-#     dependency the verify lane has no need of, and with it the risk of
-#     a stall behind harden-runner's block policy.
+#     detectJavaApiLink defaults on, so building javadoc reaches out to
+#     docs.oracle.com. Javadoc itself succeeds on every JDK tested, so
+#     this is not a correctness fix: it removes an egress dependency the
+#     verify lane has no need of, and with it the risk of a stall behind
+#     harden-runner's block policy.
 #
 #   mvn_version: '3.9.11'
 #     Pinned rather than left to the action default, which happens to be
@@ -177,19 +177,19 @@ jobs:
       # gerrit_url falls back to the GERRIT_URL repository variable.
       #
       # See TOOLCHAIN NOTES above; each value is load-bearing.
-      java_version: '11'
+      java_version: '21'
       mvn_version: '3.9.11'
       run_jacoco: false
       mvn_params: '-Dmaven.javadoc.skip=true'
-      # 79 of 79 tests pass on JDK 11, so the lane gates on them.
+      # All 1734 tests pass on JDK 21, so the lane gates on them.
       test_permit_fail: false
-      # Audit, do not block. Grype gates at medium by default, and the
-      # tree has 18 findings -- one of them critical. Every one sits in
-      # netty 4.0.56.Final or guava 19.0, both transitive through
-      # cassandra-driver-core 3.6.0, or in gson 2.7. Clearing them means
-      # changing dependencies, which 1.0.3 must not do: it stays a
-      # coordinate-only fork so SDC migrates by swapping groupIds alone.
-      # Bumps, and this flag going away, belong to the next release.
+      # Audit, do not block. The 18 findings this was opened for -- one
+      # critical -- sat in netty 4.0.56.Final and guava 19.0, both
+      # transitive through cassandra-driver-core, and in gson 2.7. All
+      # three are bumped as of this change, and OSV reports nothing open
+      # against what the reactor now resolves. The flag survives one more
+      # round because that is measured locally, not from the lane's own
+      # report; set it false once a verify run confirms Grype agrees.
       grype_permit_fail: true
 
   # Report the overall workflow conclusion back to Gerrit as a Verified vote.

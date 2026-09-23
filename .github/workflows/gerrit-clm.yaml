@@ -26,13 +26,12 @@
 # maven_server_password secret if that ever stops being true.
 #
 # The pre-scan build carries -Dmaven.javadoc.skip=true for the reason
-# documented in the verify lane: javadoc resolves detectJavaApiLink over
-# plain HTTP to docs.oracle.com, an egress dependency this lane has no
+# documented in the verify lane: javadoc resolves detectJavaApiLink
+# against docs.oracle.com, an egress dependency this lane has no
 # need of. -DskipTests goes with it because CLM evaluates resolved
 # dependencies, so running the suite would cost time and buy nothing.
-# java_version is 11 for the reasons in gerrit-verify; the Nexus IQ CLI
-# runs on iq_java_version (17) independently, which is what stops the
-# older build JDK breaking the scanner.
+# java_version follows gerrit-verify; the Nexus IQ CLI runs on
+# iq_java_version independently of it.
 #
 # SCHEDULE:
 #   Sonatype Lifecycle scores the dependency tree against an advisory
@@ -174,7 +173,7 @@ jobs:
       #
       # Build so the scan sees resolved dependencies.
       build_type: 'maven'
-      java_version: '11'
+      java_version: '21'
       mvn_version: '3.9.11'
       mvn_params: '-DskipTests -Dmaven.javadoc.skip=true --fail-at-end'
       # Dependency fetches from artifact CDNs are impractical to enumerate
