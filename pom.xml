@@ -45,8 +45,10 @@
         <java.source>1.8</java.source>
         <java.target>1.8</java.target>
 
-        <datastax.cassandra.version>3.6.0</datastax.cassandra.version>
-        <gson.version>2.7</gson.version>
+        <datastax.cassandra.version>3.11.5</datastax.cassandra.version>
+        <gson.version>2.14.0</gson.version>
+        <guava.version>32.1.1-jre</guava.version>
+        <netty.version>4.1.138.Final</netty.version>
         <testng.version>6.9.10</testng.version>
         <mockito.version>5.18.0</mockito.version>
 
@@ -60,6 +62,21 @@
 
     <dependencyManagement>
         <dependencies>
+            <!-- 3.11.5 is the last release of the driver's 3.x line, and the netty 4.0.x and guava
+                 19.0 it carries both have open advisories with no fix inside those lines. Managing
+                 them here is what closes them short of the 4.x driver's API rewrite. -->
+            <dependency>
+                <groupId>io.netty</groupId>
+                <artifactId>netty-bom</artifactId>
+                <version>${netty.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>com.google.guava</groupId>
+                <artifactId>guava</artifactId>
+                <version>${guava.version}</version>
+            </dependency>
             <dependency>
                 <groupId>org.testng</groupId>
                 <artifactId>testng</artifactId>
@@ -72,10 +89,20 @@
                 <version>${mockito.version}</version>
                 <scope>test</scope>
             </dependency>
+            <!-- jackson-databind is only reachable from the driver through CloudConfigFactory,
+                 which reads an Astra secure-connect bundle; Zusammen configures contact points
+                 directly and never loads it. The driver pins a 2.7.9.x that no longer receives
+                 fixes, so keeping it would carry that advisory list for dead code. -->
             <dependency>
                 <groupId>com.datastax.cassandra</groupId>
                 <artifactId>cassandra-driver-core</artifactId>
                 <version>${datastax.cassandra.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>com.fasterxml.jackson.core</groupId>
+                        <artifactId>jackson-databind</artifactId>
+                    </exclusion>
+                </exclusions>
             </dependency>
             <dependency>
                 <groupId>com.datastax.cassandra</groupId>
