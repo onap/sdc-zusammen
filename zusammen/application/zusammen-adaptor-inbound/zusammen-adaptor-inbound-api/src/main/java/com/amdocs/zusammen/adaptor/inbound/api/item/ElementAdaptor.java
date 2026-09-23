@@ -39,6 +39,19 @@ public interface ElementAdaptor {
 
   Response<Element> get(SessionContext context, ElementContext elementContext, Id elementId);
 
+  /**
+   * The element with its descendants loaded down to {@code depth} levels below it; deeper
+   * sub-elements are id-only, as {@link #get} returns them, and so is a sub-element already
+   * attached elsewhere in the tree (a second parent of a shared id, or the target of a
+   * back-pointer), even within {@code depth}. {@code depth} 0 is {@link #get};
+   * {@code Integer.MAX_VALUE} reads the whole subtree. The value is null when the element does not
+   * exist.
+   *
+   * @throws IllegalArgumentException if {@code elementId} is null or {@code depth} is negative
+   */
+  Response<Element> getTree(SessionContext context, ElementContext elementContext, Id elementId,
+                            int depth);
+
   Response<ElementConflict> getConflict(SessionContext context, ElementContext elementContext,
                                         Id elementId);
 

@@ -39,6 +39,9 @@ public interface ElementManager {
 
   CoreElement get(SessionContext context, ElementContext elementContext, Id elementId);
 
+  CoreElement getTree(SessionContext context, ElementContext elementContext, Id elementId,
+                      int depth);
+
   CoreElement save(SessionContext context, ElementContext elementContext, CoreElement element,
                    String message);
 

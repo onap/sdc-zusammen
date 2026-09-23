@@ -243,6 +243,45 @@ public class ElementAdaptorImplTest {
     }
 
     @Test
+    public void testGetTreeConvertsEveryCoreElementField() {
+        CoreElement coreElement = coreElement("element-1");
+        coreElement.setSubElements(Collections.singletonList(coreElement("sub-element")));
+        when(elementManager.getTree(context, elementContext, ELEMENT_ID, 1)).thenReturn(coreElement);
+
+        Response<Element> response = adaptor.getTree(context, elementContext, ELEMENT_ID, 1);
+
+        Assert.assertTrue(response.isSuccessful());
+        Element element = response.getValue();
+        Assert.assertEquals(element.getElementId().getValue(), "element-1");
+        Assert.assertEquals(element.getSubElements().size(), 1);
+        Assert.assertEquals(
+                element.getSubElements().iterator().next().getElementId().getValue(),
+                "sub-element");
+    }
+
+    @Test
+    public void testGetTreeReturnsNullValueWhenElementIsUnknown() {
+        when(elementManager.getTree(context, elementContext, ELEMENT_ID, 1)).thenReturn(null);
+
+        Response<Element> response = adaptor.getTree(context, elementContext, ELEMENT_ID, 1);
+
+        Assert.assertTrue(response.isSuccessful());
+        Assert.assertNull(response.getValue());
+    }
+
+    @Test
+    public void testGetTreeFailureIsMappedToElementGetError() {
+        when(elementManager.getTree(context, elementContext, ELEMENT_ID, 1)).thenThrow(
+                AdaptorTestSupport.failure(ErrorCode.MD_ELEMENT_GET, Module.ZSTM, "not found"));
+
+        Response<Element> response = adaptor.getTree(context, elementContext, ELEMENT_ID, 1);
+
+        Assert.assertFalse(response.isSuccessful());
+        AdaptorTestSupport.assertErrorCode(response.getReturnCode(), Module.ZDB,
+                ErrorCode.ZU_ELEMENT_GET);
+    }
+
+    @Test
     public void testGetConflictConvertsLocalAndRemoteElement() {
         CoreElementConflict coreElementConflict = new CoreElementConflict();
         coreElementConflict.setLocalElement(coreElement("local-element"));

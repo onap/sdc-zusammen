@@ -102,6 +102,23 @@ public class ElementAdaptorImpl implements ElementAdaptor {
   }
 
   @Override
+  public Response<Element> getTree(SessionContext context, ElementContext elementContext,
+                                   Id elementId, int depth) {
+    Response<Element> response;
+    try {
+      Element element = ElementConvertor
+          .convert(getElementManager(context).getTree(context, elementContext, elementId, depth));
+      response = new Response<>(element);
+    } catch (ZusammenException ze) {
+      ReturnCode returnCode =
+          new ReturnCode(ErrorCode.ZU_ELEMENT_GET, Module.ZDB, null, ze.getReturnCode());
+      logger.error(returnCode.toString(), ze);
+      response = new Response<>(returnCode);
+    }
+    return response;
+  }
+
+  @Override
   public Response<ElementConflict> getConflict(SessionContext context,
                                                ElementContext elementContext, Id elementId) {
     Response<ElementConflict> response;
