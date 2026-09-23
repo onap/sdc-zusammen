@@ -181,15 +181,15 @@ jobs:
       mvn_version: '3.9.11'
       run_jacoco: false
       mvn_params: '-Dmaven.javadoc.skip=true'
-      # 79 of 79 tests pass on JDK 11, so the lane gates on them.
+      # All 1734 tests pass on JDK 11, so the lane gates on them.
       test_permit_fail: false
-      # Audit, do not block. Grype gates at medium by default, and the
-      # tree has 18 findings -- one of them critical. Every one sits in
-      # netty 4.0.56.Final or guava 19.0, both transitive through
-      # cassandra-driver-core 3.6.0, or in gson 2.7. Clearing them means
-      # changing dependencies, which 1.0.3 must not do: it stays a
-      # coordinate-only fork so SDC migrates by swapping groupIds alone.
-      # Bumps, and this flag going away, belong to the next release.
+      # Audit, do not block. The 18 findings this was opened for -- one
+      # critical -- sat in netty 4.0.56.Final and guava 19.0, both
+      # transitive through cassandra-driver-core, and in gson 2.7. All
+      # three are bumped as of this change, and OSV reports nothing open
+      # against what the reactor now resolves. The flag survives one more
+      # round because that is measured locally, not from the lane's own
+      # report; set it false once a verify run confirms Grype agrees.
       grype_permit_fail: true
 
   # Report the overall workflow conclusion back to Gerrit as a Verified vote.
